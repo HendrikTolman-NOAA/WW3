@@ -67,6 +67,7 @@ jobs:
           . /opt/intel/oneapi/setvars.sh
           git clone -c feature.manyFiles=true https://github.com/JCSDA/spack.git
           source spack/share/spack/setup-env.sh
+          mkdir -p spack/lib/spack/env/intel
           ln -s $(realpath $(which gcc)) spack/lib/spack/env/intel/gcc # spack/make bug in ESMF
           spack env create ww3-intel ww3/model/ci/spack_intel.yaml
           spack env activate ww3-intel

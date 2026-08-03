@@ -98,7 +98,7 @@ jobs:
           cd ${GITHUB_WORKSPACE}/ww3
           # Download and untar data before activating Spack, to avoid loading Spack libraries that might have mismatched instruction sets (e.g. AVX/mismatched CPU architectures) causing illegal instructions (SIGILL) in system binaries like tar.
           ${GITHUB_WORKSPACE}/ww3/model/bin/ww3_from_ftp.sh -k
-          source spack/share/spack/setup-env.sh
+          source ${GITHUB_WORKSPACE}/spack/share/spack/setup-env.sh
           spack env activate ww3-gnu
           set -x
           cd ww3

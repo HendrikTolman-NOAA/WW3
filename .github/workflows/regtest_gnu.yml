@@ -95,6 +95,9 @@ jobs:
 
       - name: build-ww3
         run: |
+          cd ${GITHUB_WORKSPACE}/ww3
+          # Download and untar data before activating Spack, to avoid loading Spack libraries that might have mismatched instruction sets (e.g. AVX/mismatched CPU architectures) causing illegal instructions (SIGILL) in system binaries like tar.
+          ${GITHUB_WORKSPACE}/ww3/model/bin/ww3_from_ftp.sh -k
           source spack/share/spack/setup-env.sh
           spack env activate ww3-gnu
           set -x
@@ -108,7 +111,6 @@ jobs:
           # make -j2 VERBOSE=1
           cd ${GITHUB_WORKSPACE}/ww3
           ls -l
-          ${GITHUB_WORKSPACE}/ww3/model/bin/ww3_from_ftp.sh -k
           cd regtests
           ./bin/run_cmake_test -o all -S -T -s PR1_MPI -w work_PR1_MPI -f -p mpirun -n 24 ../model ww3_tp2.5
           cd ww3_tp2.5

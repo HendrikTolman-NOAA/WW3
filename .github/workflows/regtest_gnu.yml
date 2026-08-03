@@ -101,7 +101,6 @@ jobs:
           source ${GITHUB_WORKSPACE}/spack/share/spack/setup-env.sh
           spack env activate ww3-gnu
           set -x
-          cd ww3
           export CC=mpicc
           export FC=mpif90
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct

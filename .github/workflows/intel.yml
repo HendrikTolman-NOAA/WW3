@@ -16,7 +16,7 @@ env:
   cache_key: intel10-3
   CC: icc
   FC: ifort
-  CXX: icpc
+  CXX: icpx
   I_MPI_CC: icc
   I_MPI_F90: ifort
 

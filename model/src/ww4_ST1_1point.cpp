@@ -3,7 +3,7 @@
 // NWS often uses Generative AI (GenAI) for code development and refactoring. Whenever GenAI is used, NWS requires a full human review of code before it is added to its repositories.
 
 /**
- * @file w3src1_cpp.cpp
+ * @file ww4_ST1_1point.cpp
  * @brief Pure C++ implementations of the ST1 source term computations (input and dissipation).
  * @details This file contains C++20 optimized implementations of WAVEWATCH III (WW3) ST1 source terms
  *          intended as the starting point of the WAVEWATCH IV (WW4) conversion.

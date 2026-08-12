@@ -8,7 +8,7 @@
  * @details This file contains C++20 optimized implementations of WAVEWATCH III (WW3) ST1 source terms
  *          intended as the starting point of the WAVEWATCH IV (WW4) conversion.
  * @author Main Authors: Aldgisl (AI Persona), Hendrik Tolman
- * @author Contributors: Jules (Developer)
+ * @author Contributors: Jules (Agentic AI)
  * @author Original WW3 Author: H. L. Tolman
  * @date 2026-08-12 (Initial Date)
  * @date 2026-08-12 (Most Recent Update Date)

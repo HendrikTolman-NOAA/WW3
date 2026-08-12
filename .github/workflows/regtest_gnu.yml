@@ -111,7 +111,7 @@ jobs:
           cd ${GITHUB_WORKSPACE}/ww3
           ls -l
           cd regtests
-          ./bin/run_cmake_test -o all -S -T -s PR1_MPI -w work_PR1_MPI -f -p mpirun -n 24 ../model ww3_tp2.5
+          ./bin/run_cmake_test -o all -S -T -s PR1_MPI -w work_PR1_MPI -f -p mpirun -n 24 ../model ww3_tp2.5 || (echo "=== ww3_outf.out ==="; cat ${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.5/work_PR1_MPI/ww3_outf.out; echo "=== ww3_shel.out ==="; cat ${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.5/work_PR1_MPI/ww3_shel.out; exit 1)
           cd ww3_tp2.5
           ls -l
           cd work_PR1_MPI

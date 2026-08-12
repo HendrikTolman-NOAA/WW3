@@ -1,5 +1,5 @@
 // WAVEWATCH IV (WW4) Source Code
-// Copyright 2024 National Weather Service (NWS), National Oceanic and Atmospheric Administration. All rights reserved.
+// Copyright 2026 National Weather Service (NWS), National Oceanic and Atmospheric Administration. All rights reserved.
 // NWS often uses Generative AI (GenAI) for code development and refactoring. Whenever GenAI is used, NWS requires a full human review of code before it is added to its repositories.
 
 /**
@@ -7,10 +7,11 @@
  * @brief Pure C++ implementations of the ST1 source term computations (input and dissipation).
  * @details This file contains C++20 optimized implementations of WAVEWATCH III (WW3) ST1 source terms
  *          intended as the starting point of the WAVEWATCH IV (WW4) conversion.
- * @author Main Authors: Aldgisl (AI Persona), Jules (Developer)
+ * @author Main Authors: Aldgisl (AI Persona), Hendrik Tolman
+ * @author Contributors: Jules (Developer)
  * @author Original WW3 Author: H. L. Tolman
- * @date 2024-08-03 (Initial Date)
- * @date 2024-08-03 (Most Recent Update Date)
+ * @date 2026-08-12 (Initial Date)
+ * @date 2026-08-12 (Most Recent Update Date)
  */
 
 #include <cmath>
@@ -50,6 +51,7 @@ void compute_w3sin1(
     const float* const ecos,
     const float* const esin
 ) noexcept {
+    // 2.  Diagonal and Source via C++
     for (int is = 0; is < nspec; ++is) {
         const float term = ustar * (ecos[is] * cosu + esin[is] * sinu) * K[is] / sig2[is] - 0.035714f;
         D[is] = sinc1 * sig2[is] * std::max(0.0f, term);
@@ -83,7 +85,10 @@ void compute_w3sds1(
     const int nspec,
     const float sdsc1
 ) noexcept {
+    // 1.  Common factor (calculated in C++)
     const float factor = sdsc1 * fmean * (wnmean * wnmean * wnmean) * (emean * emean);
+
+    // 3.  Source term via C++
     for (int is = 0; is < nspec; ++is) {
         D[is] = factor * K[is];
         S[is] = D[is] * A[is];

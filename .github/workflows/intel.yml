@@ -16,7 +16,7 @@ env:
   cache_key: intel10-3
   CC: icc
   FC: ifort
-  CXX: icpx
+  CXX: g++
   I_MPI_CC: icc
   I_MPI_F90: ifort
 
@@ -128,7 +128,7 @@ jobs:
           cd ww3
           export CC=mpiicc
           export FC=mpiifort
-          export CXX=mpiicpx
+          export CXX=mpicxx
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
           mkdir build && cd build
           if [[ ${{ matrix.switch }} == "MULTI_ESMF" ]]; then

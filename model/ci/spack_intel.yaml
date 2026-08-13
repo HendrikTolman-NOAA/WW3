@@ -1,9 +1,32 @@
 spack:
   packages:
     all:
-      require: '%intel'
       providers:
         mpi: [intel-oneapi-mpi]
+    netcdf-c:
+      require: '%intel'
+    netcdf-fortran:
+      require: '%intel'
+    bacio:
+      require: '%intel'
+    g2:
+      require: '%intel'
+    metis:
+      require: '%intel'
+    parmetis:
+      require: '%intel'
+    scotch:
+      require: '%intel'
+    jasper:
+      require: '%intel'
+    w3emc:
+      require: '%intel'
+    parallelio:
+      require: '%intel'
+    esmf:
+      require: '%intel'
+    intel-oneapi-mpi:
+      require: '%intel'
     python:
       require: '%gcc'
     py-pyyaml:

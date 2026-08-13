@@ -1,7 +1,7 @@
 spack:
   packages:
     all:
-      compiler: [oneapi]
+      compiler: [intel]
       providers:
         mpi: [intel-oneapi-mpi]
     python:
@@ -22,7 +22,7 @@ spack:
   - w3emc@2.9.2
   - parallelio@2.5.9+fortran~pnetcdf
   - esmf@8.4.2~debug~xerces+external-parallelio
-  - intel-oneapi-mpi %oneapi
+  - intel-oneapi-mpi %intel
   view: true
   concretizer:
     unify: when_possible

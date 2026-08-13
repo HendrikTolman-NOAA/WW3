@@ -13,11 +13,11 @@ concurrency:
 
 # Set I_MPI_CC/F90 so Intel MPI wrapper uses icc/ifort instead of gcc/gfortran
 env:
-  cache_key: intel10-7
-  CC: icx
+  cache_key: intel10-8
+  CC: icc
   FC: ifort
   CXX: icpx
-  I_MPI_CC: icx
+  I_MPI_CC: icc
   I_MPI_F90: ifort
   I_MPI_CXX: icpx
 
@@ -73,10 +73,10 @@ jobs:
           spack env create ww3-intel ww3/model/ci/spack_intel.yaml
           spack env activate ww3-intel
           spack compiler find
+          python3 ww3/model/ci/modify_compilers.py
           sudo apt install cmake
           spack external find
           spack config add "packages:mpi:require:'intel-oneapi-mpi'"
-          spack config add "packages:all:require:['%oneapi']"
           spack config add "packages:all:require:['target=x86_64']"
           spack concretize
           spack install --dirty -v --fail-fast
@@ -128,11 +128,9 @@ jobs:
           source spack/share/spack/setup-env.sh
           spack env activate ww3-intel
           cd ww3
-          export CC=mpicc
-          export FC=mpif90
+          export CC=mpiicc
+          export FC=mpiifort
           export CXX=mpicxx
-          export I_MPI_CC=icx
-          export I_MPI_F90=ifort
           export I_MPI_CXX=icpx
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
           mkdir build && cd build

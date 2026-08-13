@@ -25,38 +25,21 @@ def modify_compilers():
         new_lines = []
         in_intel = False
         modified = False
-        cc_path = None
 
-        # First pass: find the cc path for the intel compiler
         for line in lines:
+            # Check if we are entering an intel or oneapi compiler block
             if 'spec: intel' in line or 'spec: oneapi' in line:
                 in_intel = True
             elif 'spec:' in line or '- compiler:' in line:
-                if 'intel' not in line and 'oneapi' not in line:
-                    in_intel = False
-            if in_intel and 'cc:' in line:
-                cc_path = line.split('cc:')[-1].strip()
-
-        # Second pass: modify cxx path to use icpx
-        in_intel = False
-        for line in lines:
-            if 'spec: intel' in line or 'spec: oneapi' in line:
-                in_intel = True
-            elif 'spec:' in line or '- compiler:' in line:
+                # If we see another compiler section, reset the flag unless it's intel-specific
                 if 'intel' not in line and 'oneapi' not in line:
                     in_intel = False
 
+            # If we are in an intel/oneapi compiler block, modify cxx path to /usr/bin/g++
             if in_intel and 'cxx:' in line:
                 indent = len(line) - len(line.lstrip())
-                new_line = None
-                if 'icpc' in line:
-                    new_line = line.replace('icpc', 'icpx')
-                elif cc_path:
-                    bindir = os.path.dirname(cc_path)
-                    icpx_path = os.path.join(bindir, 'icpx')
-                    new_line = ' ' * indent + f"cxx: {icpx_path}\n"
-
-                if new_line and line != new_line:
+                new_line = ' ' * indent + 'cxx: /usr/bin/g++\n'
+                if line != new_line:
                     print(f"Modifying cxx path in {p}:")
                     print(f"  Old: {line.strip()}")
                     print(f"  New: {new_line.strip()}")

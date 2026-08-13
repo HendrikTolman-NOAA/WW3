@@ -1,7 +1,7 @@
 spack:
   packages:
     all:
-      compiler: [intel]
+      require: '%intel'
       providers:
         mpi: [intel-oneapi-mpi]
     python:

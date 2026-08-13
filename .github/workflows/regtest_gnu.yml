@@ -51,6 +51,7 @@ jobs:
           spack env activate ww3-gnu
           spack compiler find
           spack external find cmake
+          spack config add "packages:all:require:['target=x86_64']"
           spack add mpich@3.4.2
           spack concretize
           spack install --dirty -v
@@ -95,10 +96,12 @@ jobs:
 
       - name: build-ww3
         run: |
-          source spack/share/spack/setup-env.sh
+          cd ${GITHUB_WORKSPACE}/ww3
+          # Download and untar data before activating Spack, to avoid loading Spack libraries that might have mismatched instruction sets (e.g. AVX/mismatched CPU architectures) causing illegal instructions (SIGILL) in system binaries like tar.
+          ${GITHUB_WORKSPACE}/ww3/model/bin/ww3_from_ftp.sh -k
+          source ${GITHUB_WORKSPACE}/spack/share/spack/setup-env.sh
           spack env activate ww3-gnu
           set -x
-          cd ww3
           export CC=mpicc
           export FC=mpif90
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
@@ -108,9 +111,8 @@ jobs:
           # make -j2 VERBOSE=1
           cd ${GITHUB_WORKSPACE}/ww3
           ls -l
-          ${GITHUB_WORKSPACE}/ww3/model/bin/ww3_from_ftp.sh -k
           cd regtests
-          ./bin/run_cmake_test -o all -S -T -s PR1_MPI -w work_PR1_MPI -f -p mpirun -n 24 ../model ww3_tp2.5
+          ./bin/run_cmake_test -o all -S -T -s PR1_MPI -w work_PR1_MPI -f -p mpirun -n 24 ../model ww3_tp2.5 || (echo "=== ww3_outf.out ==="; cat ${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.5/work_PR1_MPI/ww3_outf.out; echo "=== ww3_shel.out ==="; cat ${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.5/work_PR1_MPI/ww3_shel.out; exit 1)
           cd ww3_tp2.5
           ls -l
           cd work_PR1_MPI

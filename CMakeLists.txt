@@ -9,7 +9,7 @@ file(STRINGS "VERSION" pVersion)
 project(
   WW3
   VERSION ${pVersion}
-  LANGUAGES C Fortran)
+  LANGUAGES C CXX Fortran)
 
 get_directory_property(hasParent PARENT_DIRECTORY)
 if(hasParent)

@@ -16,7 +16,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/check_switches.cmake)
 
 check_switches("${switches}" switch_files)
 
-add_library(ww3_lib STATIC ${ftn_src} ${switch_files})
+add_library(ww3_lib STATIC ${ftn_src} ${switch_files} ww4_ST1_1point.cpp)
 # Create alias with same name as exported target
 # so that WW3 can be usead with add_subdirectory
 add_library(WW3::WW3 ALIAS ww3_lib)
@@ -24,6 +24,7 @@ add_library(WW3::WW3 ALIAS ww3_lib)
 # Re-name library on disk to just libww3 instead of libww3_lib
 set_target_properties(ww3_lib PROPERTIES OUTPUT_NAME "ww3")
 set_target_properties(ww3_lib PROPERTIES Fortran_MODULE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/mod")
+set_target_properties(ww3_lib PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
 
 foreach(switch ${switches})
   target_compile_definitions(ww3_lib PUBLIC W3_${switch})

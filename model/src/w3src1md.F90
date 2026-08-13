@@ -339,8 +339,19 @@ CONTAINS
 #ifdef W3_T1
     USE W3ARRYMD, ONLY: OUTMAT
 #endif
+    USE, INTRINSIC :: ISO_C_BINDING
     !
     IMPLICIT NONE
+    !
+    INTERFACE
+      SUBROUTINE W3SIN1_CPP(A, K, USTAR, COSU, SINU, S, D, NSPEC, SINC1, SIG2, ECOS, ESIN) BIND(C, name="w3sin1_cpp")
+        USE, INTRINSIC :: ISO_C_BINDING
+        INTEGER(C_INT), VALUE, INTENT(IN) :: NSPEC
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: USTAR, COSU, SINU, SINC1
+        REAL(C_FLOAT), INTENT(IN) :: A(NSPEC), K(NSPEC), SIG2(NSPEC), ECOS(NSPEC), ESIN(NSPEC)
+        REAL(C_FLOAT), INTENT(OUT) :: S(NSPEC), D(NSPEC)
+      END SUBROUTINE W3SIN1_CPP
+    END INTERFACE
     !/
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
@@ -378,15 +389,9 @@ CONTAINS
     COSU   = COS(USDIR)
     SINU   = SIN(USDIR)
     !
-    ! 2.  Diagonal
+    ! 2.  Diagonal and Source via C++
     !
-    DO IS=1, NSPEC
-      D(IS) = SINC1 * SIG2(IS) * MAX ( 0. ,                         &
-           ( USTAR * (ECOS(IS)*COSU+ESIN(IS)*SINU)                  &
-           * K(IS)/SIG2(IS) - 0.035714) )
-    END DO
-    !
-    S = D * A
+    CALL W3SIN1_CPP(A, K, USTAR, COSU, SINU, S, D, INT(NSPEC, C_INT), REAL(SINC1, C_FLOAT), SIG2, ECOS, ESIN)
     !
     ! ... Test output of arrays
     !
@@ -513,8 +518,19 @@ CONTAINS
 #ifdef W3_T1
     USE W3ARRYMD, ONLY: OUTMAT
 #endif
+    USE, INTRINSIC :: ISO_C_BINDING
     !
     IMPLICIT NONE
+    !
+    INTERFACE
+      SUBROUTINE W3SDS1_CPP(A, K, EMEAN, FMEAN, WNMEAN, S, D, NSPEC, SDSC1) BIND(C, name="w3sds1_cpp")
+        USE, INTRINSIC :: ISO_C_BINDING
+        INTEGER(C_INT), VALUE, INTENT(IN) :: NSPEC
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: EMEAN, FMEAN, WNMEAN, SDSC1
+        REAL(C_FLOAT), INTENT(IN) :: A(NSPEC), K(NSPEC)
+        REAL(C_FLOAT), INTENT(OUT) :: S(NSPEC), D(NSPEC)
+      END SUBROUTINE W3SDS1_CPP
+    END INTERFACE
     !/
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
@@ -552,10 +568,9 @@ CONTAINS
     WRITE (NDST,9000) SDSC1, FMEAN, WNMEAN, EMEAN, FACTOR
 #endif
     !
-    ! 3.  Source term
+    ! 3.  Source term via C++
     !
-    D = FACTOR * K
-    S = D * A
+    CALL W3SDS1_CPP(A, K, EMEAN, FMEAN, WNMEAN, S, D, INT(NSPEC, C_INT), REAL(SDSC1, C_FLOAT))
     !
     ! ... Test output of arrays
     !

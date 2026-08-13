@@ -4,6 +4,10 @@ spack:
       compiler: [intel]
       providers:
         mpi: [intel-oneapi-mpi]
+    python:
+      require: '%gcc'
+    py-pyyaml:
+      require: '%gcc'
   specs:
   - netcdf-c@4.9.2~dap
   - netcdf-fortran@4.6.1

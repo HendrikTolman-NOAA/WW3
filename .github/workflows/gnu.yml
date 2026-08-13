@@ -99,6 +99,7 @@ jobs:
           cd ww3
           export CC=mpicc
           export FC=mpif90
+          export CXX=mpicxx
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
           mkdir build && cd build
           if [[ ${{ matrix.switch }} == "MULTI_ESMF" ]]; then

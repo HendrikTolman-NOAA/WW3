@@ -104,6 +104,7 @@ jobs:
           set -x
           export CC=mpicc
           export FC=mpif90
+          export CXX=mpicxx
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
           # mkdir build && cd build
           export LD_LIBRARY_PATH="/home/runner/work/WW3/WW3/spack/var/spack/environments/ww3-gnu/.spack-env/view/:$LD_LIBRARY_PATH"

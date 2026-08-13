@@ -19,6 +19,7 @@ env:
   CXX: g++
   I_MPI_CC: icc
   I_MPI_F90: ifort
+  I_MPI_CXX: g++
 
 # Split into a dependency build step, and a WW3 build step which
 # builds multiple switches in a matrix. The setup is run once and
@@ -130,6 +131,7 @@ jobs:
           export CC=mpiicc
           export FC=mpiifort
           export CXX=mpicxx
+          export I_MPI_CXX=g++
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
           mkdir build && cd build
           if [[ ${{ matrix.switch }} == "MULTI_ESMF" ]]; then

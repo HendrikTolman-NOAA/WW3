@@ -13,13 +13,13 @@ concurrency:
 
 # Set I_MPI_CC/F90 so Intel MPI wrapper uses icc/ifort instead of gcc/gfortran
 env:
-  cache_key: intel10-11
+  cache_key: intel10-12
   CC: icc
   FC: ifort
-  CXX: g++
+  CXX: icpx
   I_MPI_CC: icc
   I_MPI_F90: ifort
-  I_MPI_CXX: g++
+  I_MPI_CXX: icpx
 
 # Split into a dependency build step, and a WW3 build step which
 # builds multiple switches in a matrix. The setup is run once and
@@ -101,7 +101,7 @@ jobs:
     strategy:
       matrix:
         switch: [Ifremer1, NCEP_st2, NCEP_st4, ite_pdlib, NCEP_st4sbs, NCEP_glwu, OASACM, UKMO, MULTI_ESMF]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: checkout-ww3
@@ -130,8 +130,8 @@ jobs:
           cd ww3
           export CC=mpiicc
           export FC=mpiifort
-          export CXX=mpicxx
-          export I_MPI_CXX=g++
+          export CXX=mpiicpx
+          export I_MPI_CXX=icpx
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
           mkdir build && cd build
           if [[ ${{ matrix.switch }} == "MULTI_ESMF" ]]; then

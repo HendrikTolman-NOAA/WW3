@@ -1,5 +1,6 @@
 import os
 import glob
+import shutil
 
 def modify_compilers():
     # Find all compilers.yaml files and the active environment's spack.yaml file
@@ -35,10 +36,11 @@ def modify_compilers():
                 if 'intel' not in line and 'oneapi' not in line:
                     in_intel = False
 
-            # If we are in an intel/oneapi compiler block, modify cxx path to /usr/bin/g++
+            # If we are in an intel/oneapi compiler block, modify cxx path to icpx
             if in_intel and 'cxx:' in line:
                 indent = len(line) - len(line.lstrip())
-                new_line = ' ' * indent + 'cxx: /usr/bin/g++\n'
+                cxx_bin = shutil.which('icpx') or 'icpx'
+                new_line = ' ' * indent + f'cxx: {cxx_bin}\n'
                 if line != new_line:
                     print(f"Modifying cxx path in {p}:")
                     print(f"  Old: {line.strip()}")

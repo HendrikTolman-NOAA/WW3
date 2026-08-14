@@ -13,7 +13,7 @@ concurrency:
 
 # Set I_MPI_CC/F90 so Intel MPI wrapper uses icc/ifort instead of gcc/gfortran
 env:
-  cache_key: intel10-11
+  cache_key: intel10-12
   CC: icc
   FC: ifort
   CXX: g++
@@ -131,7 +131,7 @@ jobs:
           export CC=mpiicc
           export FC=mpiifort
           export CXX=mpicxx
-          export I_MPI_CXX=g++
+          export I_MPI_CXX=icpx
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
           mkdir build && cd build
           if [[ ${{ matrix.switch }} == "MULTI_ESMF" ]]; then

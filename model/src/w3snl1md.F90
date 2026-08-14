@@ -299,8 +299,38 @@ CONTAINS
 #ifdef W3_T1
     USE W3ARRYMD, ONLY: OUTMAT
 #endif
+    USE, INTRINSIC :: ISO_C_BINDING
     !
     IMPLICIT NONE
+    !
+    INTERFACE
+      SUBROUTINE W3SNL1_CPP(A, CG, KDMEAN, S, D, NK, NTH, NSPEC, NFRHGH, NSPECX, NSPECY, &
+                            SIG, FACHFE, SNLC1, SNLS1, SNLS2, SNLS3, KDCON, KDMN, &
+                            IP11, IP12, IP13, IP14, IM11, IM12, IM13, IM14, &
+                            IP21, IP22, IP23, IP24, IM21, IM22, IM23, IM24, &
+                            IC11, IC12, IC21, IC22, IC31, IC32, IC41, IC42, &
+                            IC51, IC52, IC61, IC62, IC71, IC72, IC81, IC82, &
+                            DAL1, DAL2, DAL3, AF11, &
+                            AWG1, AWG2, AWG3, AWG4, AWG5, AWG6, AWG7, AWG8, &
+                            SWG1, SWG2, SWG3, SWG4, SWG5, SWG6, SWG7, SWG8) BIND(C, name="w3snl1_cpp")
+        USE, INTRINSIC :: ISO_C_BINDING
+        INTEGER(C_INT), VALUE, INTENT(IN) :: NK, NTH, NSPEC, NFRHGH, NSPECX, NSPECY
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: KDMEAN, FACHFE, SNLC1, SNLS1, SNLS2, SNLS3, KDCON, KDMN
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: DAL1, DAL2, DAL3
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: AWG1, AWG2, AWG3, AWG4, AWG5, AWG6, AWG7, AWG8
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: SWG1, SWG2, SWG3, SWG4, SWG5, SWG6, SWG7, SWG8
+        REAL(C_FLOAT), INTENT(IN) :: A(NSPEC), CG(NK), SIG(NK), AF11(NSPECX)
+        INTEGER(C_INT), INTENT(IN) :: IP11(NSPECX), IP12(NSPECX), IP13(NSPECX), IP14(NSPECX)
+        INTEGER(C_INT), INTENT(IN) :: IM11(NSPECX), IM12(NSPECX), IM13(NSPECX), IM14(NSPECX)
+        INTEGER(C_INT), INTENT(IN) :: IP21(NSPECX), IP22(NSPECX), IP23(NSPECX), IP24(NSPECX)
+        INTEGER(C_INT), INTENT(IN) :: IM21(NSPECX), IM22(NSPECX), IM23(NSPECX), IM24(NSPECX)
+        INTEGER(C_INT), INTENT(IN) :: IC11(NSPEC), IC12(NSPEC), IC21(NSPEC), IC22(NSPEC)
+        INTEGER(C_INT), INTENT(IN) :: IC31(NSPEC), IC32(NSPEC), IC41(NSPEC), IC42(NSPEC)
+        INTEGER(C_INT), INTENT(IN) :: IC51(NSPEC), IC52(NSPEC), IC61(NSPEC), IC62(NSPEC)
+        INTEGER(C_INT), INTENT(IN) :: IC71(NSPEC), IC72(NSPEC), IC81(NSPEC), IC82(NSPEC)
+        REAL(C_FLOAT), INTENT(OUT) :: S(NSPEC), D(NSPEC)
+      END SUBROUTINE W3SNL1_CPP
+    END INTERFACE
     !/
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
@@ -335,109 +365,27 @@ CONTAINS
     CALL STRACE (IENT, 'W3SNL1')
 #endif
     !
-    ! 1.  Calculate prop. constant --------------------------------------- *
     !
-    X      = MAX ( KDCON*KDMEAN , KDMN )
-    X2     = MAX ( -1.E15, SNLS3*X)
-    CONS   = SNLC1 * ( 1. + SNLS1/X * (1.-SNLS2*X) * EXP(X2) )
+    ! Call C++ implementation of W3SNL1
     !
-#ifdef W3_T
-    WRITE (NDST,9000) KDMEAN, CONS
-#endif
-    !
-    ! 2.  Prepare auxiliary spectrum and arrays -------------------------- *
-    !
-    DO IFR=1, NFR
-      CONX = TPIINV / SIG(IFR) * CG(IFR)
-      DO ITH=1, NTH
-        ISP       = ITH + (IFR-1)*NTH
-        UE (ISP) = A(ISP) / CONX
-        CON(ISP) = CONX
-      END DO
-    END DO
-    !
-    DO IFR=NFR+1, NFRHGH
-      DO ITH=1, NTH
-        ISP      = ITH + (IFR-1)*NTH
-        UE(ISP) = UE(ISP-NTH) * FACHFE
-      END DO
-    END DO
-    !
-    DO ISP=1-NTH, 0
-      UE  (ISP) = 0.
-      SA1 (ISP) = 0.
-      SA2 (ISP) = 0.
-      DA1C(ISP) = 0.
-      DA1P(ISP) = 0.
-      DA1M(ISP) = 0.
-      DA2C(ISP) = 0.
-      DA2P(ISP) = 0.
-      DA2M(ISP) = 0.
-    END DO
-    !
-    ! 3.  Calculate interactions for extended spectrum ------------------- *
-    !
-    DO ISP=1, NSPECX
-      !
-      ! 3.a Energy at interacting bins
-      !
-      E00    =        UE(ISP)
-      EP1    = AWG1 * UE(IP11(ISP)) + AWG2 * UE(IP12(ISP))        &
-           + AWG3 * UE(IP13(ISP)) + AWG4 * UE(IP14(ISP))
-      EM1    = AWG5 * UE(IM11(ISP)) + AWG6 * UE(IM12(ISP))        &
-           + AWG7 * UE(IM13(ISP)) + AWG8 * UE(IM14(ISP))
-      EP2    = AWG1 * UE(IP21(ISP)) + AWG2 * UE(IP22(ISP))        &
-           + AWG3 * UE(IP23(ISP)) + AWG4 * UE(IP24(ISP))
-      EM2    = AWG5 * UE(IM21(ISP)) + AWG6 * UE(IM22(ISP))        &
-           + AWG7 * UE(IM23(ISP)) + AWG8 * UE(IM24(ISP))
-      !
-      ! 3.b Contribution to interactions
-      !
-      FACTOR = CONS * AF11(ISP) * E00
-      !
-      SA1A   = E00 * ( EP1*DAL1 + EM1*DAL2 )
-      SA1B   = SA1A - EP1*EM1*DAL3
-      SA2A   = E00 * ( EP2*DAL1 + EM2*DAL2 )
-      SA2B   = SA2A - EP2*EM2*DAL3
-      !
-      SA1 (ISP) = FACTOR * SA1B
-      SA2 (ISP) = FACTOR * SA2B
-      !
-      DA1C(ISP) = CONS * AF11(ISP) * ( SA1A + SA1B )
-      DA1P(ISP) = FACTOR * ( DAL1*E00 - DAL3*EM1 )
-      DA1M(ISP) = FACTOR * ( DAL2*E00 - DAL3*EP1 )
-      !
-      DA2C(ISP) = CONS * AF11(ISP) * ( SA2A + SA2B )
-      DA2P(ISP) = FACTOR * ( DAL1*E00 - DAL3*EM2 )
-      DA2M(ISP) = FACTOR * ( DAL2*E00 - DAL3*EP2 )
-      !
-    END DO
-    !
-    ! 4.  Put source and diagonal term together -------------------------- *
-    !
-    DO ISP=1, NSPEC
-      !
-      S(ISP) = CON(ISP) * ( - 2. * ( SA1(ISP) + SA2(ISP) )       &
-           + AWG1 * ( SA1(IC11(ISP)) + SA2(IC12(ISP)) )    &
-           + AWG2 * ( SA1(IC21(ISP)) + SA2(IC22(ISP)) )    &
-           + AWG3 * ( SA1(IC31(ISP)) + SA2(IC32(ISP)) )    &
-           + AWG4 * ( SA1(IC41(ISP)) + SA2(IC42(ISP)) )    &
-           + AWG5 * ( SA1(IC51(ISP)) + SA2(IC52(ISP)) )    &
-           + AWG6 * ( SA1(IC61(ISP)) + SA2(IC62(ISP)) )    &
-           + AWG7 * ( SA1(IC71(ISP)) + SA2(IC72(ISP)) )    &
-           + AWG8 * ( SA1(IC81(ISP)) + SA2(IC82(ISP)) ) )
-      !
-      D(ISP) =  - 2. * ( DA1C(ISP) + DA2C(ISP) )                 &
-           + SWG1 * ( DA1P(IC11(ISP)) + DA2P(IC12(ISP)) )     &
-           + SWG2 * ( DA1P(IC21(ISP)) + DA2P(IC22(ISP)) )     &
-           + SWG3 * ( DA1P(IC31(ISP)) + DA2P(IC32(ISP)) )     &
-           + SWG4 * ( DA1P(IC41(ISP)) + DA2P(IC42(ISP)) )     &
-           + SWG5 * ( DA1M(IC51(ISP)) + DA2M(IC52(ISP)) )     &
-           + SWG6 * ( DA1M(IC61(ISP)) + DA2M(IC62(ISP)) )     &
-           + SWG7 * ( DA1M(IC71(ISP)) + DA2M(IC72(ISP)) )     &
-           + SWG8 * ( DA1M(IC81(ISP)) + DA2M(IC82(ISP)) )
-      !
-    END DO
+    CALL W3SNL1_CPP(A, CG, REAL(KDMEAN, C_FLOAT), S, D, INT(NK, C_INT), INT(NTH, C_INT), &
+                    INT(NSPEC, C_INT), INT(NFRHGH, C_INT), INT(NSPECX, C_INT), INT(NSPECY, C_INT), &
+                    SIG, REAL(FACHFE, C_FLOAT), REAL(SNLC1, C_FLOAT), REAL(SNLS1, C_FLOAT), &
+                    REAL(SNLS2, C_FLOAT), REAL(SNLS3, C_FLOAT), REAL(KDCON, C_FLOAT), &
+                    REAL(KDMN, C_FLOAT), &
+                    INT(IP11, C_INT), INT(IP12, C_INT), INT(IP13, C_INT), INT(IP14, C_INT), &
+                    INT(IM11, C_INT), INT(IM12, C_INT), INT(IM13, C_INT), INT(IM14, C_INT), &
+                    INT(IP21, C_INT), INT(IP22, C_INT), INT(IP23, C_INT), INT(IP24, C_INT), &
+                    INT(IM21, C_INT), INT(IM22, C_INT), INT(IM23, C_INT), INT(IM24, C_INT), &
+                    INT(IC11, C_INT), INT(IC12, C_INT), INT(IC21, C_INT), INT(IC22, C_INT), &
+                    INT(IC31, C_INT), INT(IC32, C_INT), INT(IC41, C_INT), INT(IC42, C_INT), &
+                    INT(IC51, C_INT), INT(IC52, C_INT), INT(IC61, C_INT), INT(IC62, C_INT), &
+                    INT(IC71, C_INT), INT(IC72, C_INT), INT(IC81, C_INT), INT(IC82, C_INT), &
+                    REAL(DAL1, C_FLOAT), REAL(DAL2, C_FLOAT), REAL(DAL3, C_FLOAT), AF11, &
+                    REAL(AWG1, C_FLOAT), REAL(AWG2, C_FLOAT), REAL(AWG3, C_FLOAT), REAL(AWG4, C_FLOAT), &
+                    REAL(AWG5, C_FLOAT), REAL(AWG6, C_FLOAT), REAL(AWG7, C_FLOAT), REAL(AWG8, C_FLOAT), &
+                    REAL(SWG1, C_FLOAT), REAL(SWG2, C_FLOAT), REAL(SWG3, C_FLOAT), REAL(SWG4, C_FLOAT), &
+                    REAL(SWG5, C_FLOAT), REAL(SWG6, C_FLOAT), REAL(SWG7, C_FLOAT), REAL(SWG8, C_FLOAT))
     !
     ! ... Test output :
     !

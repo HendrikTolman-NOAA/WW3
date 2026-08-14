@@ -135,14 +135,25 @@ CONTAINS
     ! 10. Source code :
     !
     !/ ------------------------------------------------------------------- /
-    USE CONSTANTS
+    USE CONSTANTS, ONLY: GRAV, RADE
     USE W3GDATMD, ONLY: NTH, NK, ECOS, ESIN, SIG, SLNC1, FSPM, FSHF
     USE W3ODATMD, ONLY: NDSE, NDST
 #ifdef W3_S
     USE W3SERVMD, ONLY: STRACE
 #endif
+    USE, INTRINSIC :: ISO_C_BINDING
     !/
     IMPLICIT NONE
+    !/
+    INTERFACE
+      SUBROUTINE W3SLN1_CPP(K, FHIGH, USTAR, USDIR, S, NTH, NK, ECOS, ESIN, SIG, SLNC1, FSPM, FSHF, GRAV) BIND(C, name="w3sln1_cpp")
+        USE, INTRINSIC :: ISO_C_BINDING
+        INTEGER(C_INT), VALUE, INTENT(IN) :: NTH, NK
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: FHIGH, USTAR, USDIR, SLNC1, FSPM, FSHF, GRAV
+        REAL(C_FLOAT), INTENT(IN) :: K(NK), ECOS(NTH), ESIN(NTH), SIG(NK)
+        REAL(C_FLOAT), INTENT(OUT) :: S(NTH, NK)
+      END SUBROUTINE W3SLN1_CPP
+    END INTERFACE
     !/
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
@@ -153,12 +164,9 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: ITH, IK
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
-    REAL                    :: COSU, SINU, DIRF(NTH), FAC, FF1, FF2, &
-         FFILT, RFR, WNF(NK)
     !/
     !/ ------------------------------------------------------------------- /
     !/
@@ -172,31 +180,11 @@ CONTAINS
     WRITE (NDST,900) USTAR, USDIR*RADE
 #endif
     !
-    COSU   = COS(USDIR)
-    SINU   = SIN(USDIR)
+    ! 2.  Compute source term via C++ ------------------------------------- *
     !
-    DO ITH=1, NTH
-      DIRF(ITH) = MAX ( 0. , (ECOS(ITH)*COSU+ESIN(ITH)*SINU) )**4
-    END DO
-    !
-    FAC    = SLNC1 * USTAR**4
-    FF1    = FSPM * GRAV/(28.*USTAR)
-    FF2    = FSHF * MIN(SIG(NK),FHIGH)
-    FFILT  = MIN ( MAX(FF1,FF2) , 2.*SIG(NK) )
-    DO IK=1, NK
-      RFR    = SIG(IK) / FFILT
-      IF ( RFR .LT. 0.5 ) THEN
-        WNF(IK) = 0.
-      ELSE
-        WNF(IK) = FAC / K(IK) * EXP(-RFR**(-4))
-      END IF
-    END DO
-    !
-    ! 2.  Compose source term -------------------------------------------- *
-    !
-    DO IK=1, NK
-      S(:,IK) = WNF(IK) * DIRF(:)
-    END DO
+    CALL W3SLN1_CPP(K, REAL(FHIGH, C_FLOAT), REAL(USTAR, C_FLOAT), REAL(USDIR, C_FLOAT), S, &
+                    INT(NTH, C_INT), INT(NK, C_INT), ECOS, ESIN, SIG, &
+                    REAL(SLNC1, C_FLOAT), REAL(FSPM, C_FLOAT), REAL(FSHF, C_FLOAT), REAL(GRAV, C_FLOAT))
     !
     RETURN
     !

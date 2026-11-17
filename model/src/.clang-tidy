@@ -1,0 +1,23 @@
+# WW4 C++ linting (see AGENTS.md). Applies to C++ files only.
+# Disabled checks:
+#  - readability-identifier-length: keeps the WW3 variable names (A, K, S, D, ...) for traceability to the Fortran.
+#  - bugprone-easily-swappable-parameters: inherent to the Fortran call signatures.
+#  - cppcoreguidelines-pro-bounds-avoid-unchecked-container-access: flags std::span::operator[]; spans are used
+#    for performance in per-point loops and sizes are guaranteed by the documented @pre contracts.
+#  - misc-use-anonymous-namespace, misc-include-cleaner: not meaningful for a single-file library.
+Checks: >
+  bugprone-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -readability-identifier-length,
+  -bugprone-easily-swappable-parameters,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access,
+  -modernize-use-trailing-return-type,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers
+WarningsAsErrors: '*'
+HeaderFilterRegex: 'model/src/.*'

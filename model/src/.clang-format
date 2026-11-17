@@ -1,7 +1,8 @@
 # WW4 C++ formatting (see AGENTS.md). Applies to C++ files only.
+# Matches WW4: 2-space indents, 80 columns.
 BasedOnStyle: LLVM
-IndentWidth: 4
-ColumnLimit: 120
-ReflowComments: false
+IndentWidth: 2
+ColumnLimit: 80
+ReflowComments: true
 SortIncludes: CaseSensitive
 IncludeBlocks: Preserve

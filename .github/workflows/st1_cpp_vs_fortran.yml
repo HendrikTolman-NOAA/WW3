@@ -37,7 +37,7 @@ env:
 jobs:
   # Same Spack/OASIS setup and cache key as regtest_gnu.yml, so an existing cache is reused.
   setup:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: checkout-ww3
@@ -86,7 +86,7 @@ jobs:
 
   compare:
     needs: setup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

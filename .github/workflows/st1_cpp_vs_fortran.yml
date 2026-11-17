@@ -1,0 +1,173 @@
+name: st1_cpp_vs_fortran
+# Checks that the C++ ST1 routines (ww4_ST1_1point.cpp, called from w3src1md.F90)
+# give bit-identical results to the original all-Fortran w3src1md.F90.
+#
+# For each ST1 regression test, WW3 is built and run twice from the same checkout:
+#   work_<sw>      : current code (W3SPR1, W3SIN1 and W3SDS1 call the C++ routines)
+#   work_<sw>_ftn  : same code, but with w3src1md.F90 restored to the all-Fortran version
+# The native outputs of both runs are then compared with regtests/bin/test.comp (cmp).
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'model/src/w3src1md.F90'
+      - 'model/src/ww4_ST1_1point.cpp'
+      - 'model/src/CMakeLists.txt'
+      - '.github/workflows/st1_cpp_vs_fortran.yml'
+  push:
+    paths:
+      - 'model/src/w3src1md.F90'
+      - 'model/src/ww4_ST1_1point.cpp'
+      - 'model/src/CMakeLists.txt'
+      - '.github/workflows/st1_cpp_vs_fortran.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  cache_key: gnu11-1
+  CC: gcc-14
+  FC: gfortran-14
+  CXX: g++-14
+  # Last commit with the all-Fortran w3src1md.F90 (parent of 0b9febf1, which introduced the C++ calls).
+  # w3src1md.F90 had no other changes between this commit and the C++ conversion.
+  FORTRAN_REF: c3b0d04d
+
+jobs:
+  # Same Spack/OASIS setup and cache key as regtest_gnu.yml, so an existing cache is reused.
+  setup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout-ww3
+        if: steps.cache-env.outputs.cache-hit != 'true'
+        uses: actions/checkout@v3
+        with:
+            path: ww3
+
+      - name: cache-env
+        id: cache-env
+        uses: actions/cache@v3
+        with:
+          path: |
+            spack
+            ~/.spack
+            work_oasis3-mct
+          key: spack-${{ runner.os }}-${{ env.cache_key }}-${{ hashFiles('ww3/model/ci/spack_gnu.yaml') }}
+
+      - name: install-dependencies-with-spack
+        if: steps.cache-env.outputs.cache-hit != 'true'
+        run: |
+          sudo apt install cmake
+          git clone -c feature.manyFiles=true --depth=2 --branch=spack-stack-1.9.3 https://github.com/JCSDA/spack.git
+          source spack/share/spack/setup-env.sh
+          spack env create ww3-gnu ww3/model/ci/spack_gnu.yaml
+          spack env activate ww3-gnu
+          spack compiler find
+          spack external find cmake
+          spack config add "packages:all:require:['target=x86_64']"
+          spack add mpich@3.4.2
+          spack concretize
+          spack install --dirty -v
+
+      - name: build-oasis
+        if: steps.cache-env.outputs.cache-hit != 'true'
+        run: |
+          source spack/share/spack/setup-env.sh
+          spack env activate ww3-gnu
+          export WWATCH3_DIR=${GITHUB_WORKSPACE}/ww3/model
+          export OASIS_INPUT_PATH=${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.14/input/oasis3-mct
+          export OASIS_WORK_PATH=${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.14/input/work_oasis3-mct
+          cd ww3/regtests/ww3_tp2.14/input/oasis3-mct/util/make_dir
+          cmake .
+          make VERBOSE=1
+          cp -r ${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.14/input/work_oasis3-mct ${GITHUB_WORKSPACE}
+
+  compare:
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { test: ww3_ts1, switch: ST1 }
+          - { test: ww3_ts1, switch: ST1_RWND }
+          - { test: ww3_ts2, switch: ST1_PR1 }
+          - { test: ww3_ts2, switch: ST1_PR2_UQ }
+          - { test: ww3_ts2, switch: ST1_PR2_UNO }
+          - { test: ww3_ts2, switch: ST1_PR3_UQ }
+          - { test: ww3_ts2, switch: ST1_PR3_UNO }
+
+    steps:
+      - name: checkout-ww3
+        uses: actions/checkout@v3
+        with:
+            path: ww3
+            fetch-depth: 0
+
+      - name: cache-env
+        id: cache-env
+        uses: actions/cache@v3
+        with:
+          path: |
+            spack
+            ~/.spack
+            work_oasis3-mct
+          key: spack-${{ runner.os }}-${{ env.cache_key }}-${{ hashFiles('ww3/model/ci/spack_gnu.yaml') }}
+
+      - name: create-fortran-reference-source
+        run: |
+          cp -r ${GITHUB_WORKSPACE}/ww3 ${GITHUB_WORKSPACE}/ww3_ftn
+          cd ${GITHUB_WORKSPACE}/ww3_ftn
+          git show ${FORTRAN_REF}:model/src/w3src1md.F90 > model/src/w3src1md.F90
+          if grep -q "_CPP" model/src/w3src1md.F90; then
+            echo "Reference w3src1md.F90 still calls C++ routines"; exit 1
+          fi
+          git diff --stat
+
+      - name: run-cpp-and-fortran
+        run: |
+          source ${GITHUB_WORKSPACE}/spack/share/spack/setup-env.sh
+          spack env activate ww3-gnu
+          export CC=mpicc
+          export FC=mpif90
+          export CXX=mpicxx
+          export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
+          export LD_LIBRARY_PATH="/home/runner/work/WW3/WW3/spack/var/spack/environments/ww3-gnu/.spack-env/view/:$LD_LIBRARY_PATH"
+          tst=${{ matrix.test }}
+          sw=${{ matrix.switch }}
+
+          run_case () {
+            # $1 = repository copy, $2 = work directory name
+            cd ${GITHUB_WORKSPACE}/$1/regtests
+            if ! ./bin/run_cmake_test -o native -s $sw -w $2 ../model $tst; then
+              echo "=== $1 $tst $2 failed: build.log ==="; cat $tst/$2/build.log
+              for f in $tst/$2/*.out; do echo "=== $f ==="; cat $f; done
+              exit 1
+            fi
+          }
+
+          run_case ww3     work_${sw}
+          run_case ww3_ftn work_${sw}_ftn
+
+          # Put the Fortran run next to the C++ run so test.comp can compare them
+          cp -r ${GITHUB_WORKSPACE}/ww3_ftn/regtests/$tst/work_${sw}_ftn ${GITHUB_WORKSPACE}/ww3/regtests/$tst/
+
+      - name: compare-outputs
+        run: |
+          tst=${{ matrix.test }}
+          sw=${{ matrix.switch }}
+          cd ${GITHUB_WORKSPACE}/ww3/regtests
+          ./bin/test.comp $tst work_${sw} work_${sw}_ftn | tee comp.txt
+          nsame=$(grep -c " is identical" comp.txt || true)
+          ndiff=$(grep -c " is different" comp.txt || true)
+          echo "Identical files: $nsame, different files: $ndiff"
+          echo "### $tst $sw: $nsame identical, $ndiff different" >> $GITHUB_STEP_SUMMARY
+          grep " is different" comp.txt >> $GITHUB_STEP_SUMMARY || true
+          if [ "$nsame" -eq 0 ]; then
+            echo "No output files were compared"; exit 1
+          fi
+          if [ "$ndiff" -ne 0 ]; then
+            echo "C++ and Fortran ST1 results differ"; exit 1
+          fi

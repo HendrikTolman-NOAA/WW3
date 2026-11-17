@@ -171,8 +171,7 @@ USE W3ODATMD, ONLY: NDSE
 #endif
 
     ! open namelist log file
-    NDSN = 3
-    OPEN (NDSN, file=TRIM(INFILE)//'.log', form='formatted', iostat=IERR)
+    OPEN (NEWUNIT=NDSN, file=TRIM(INFILE)//'.log', form='formatted', iostat=IERR)
     IF (IERR.NE.0) THEN
       WRITE (NDSE,'(A)') 'ERROR: open full nml file '//TRIM(INFILE)//'.log failed'
       RETURN
@@ -822,7 +821,6 @@ END SUBROUTINE W3NMLOUTP
 
     10 FORMAT (A,2X,A,A)
     11 FORMAT (A,2X,A,I8)
-    13 FORMAT (A,2X,A,L1)
 
   END SUBROUTINE REPORT_POINT_NML
 
@@ -1164,8 +1162,6 @@ END SUBROUTINE W3NMLOUTP
 
 10  FORMAT (A,2X,A,A)
 11  FORMAT (A,2X,A,I8)
-13  FORMAT (A,2X,A,L1)
-14  FORMAT (A,2X,A,F8.2)
 
   END SUBROUTINE REPORT_PART_NML
 

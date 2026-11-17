@@ -1,7 +1,7 @@
 name: st1_cpp_vs_fortran
 # Checks that the C++ ST1 routines (ww4_ST1_1point.cpp, called from w3src1md.F90)
-# give bit-identical results to the original all-Fortran w3src1md.F90.
-#
+# give bit-identical results to the original all-Fortran w3src1md.F90. 
+# 
 # For each ST1 regression test, WW3 is built and run twice from the same checkout:
 #   work_<sw>      : current code (W3SPR1, W3SIN1 and W3SDS1 call the C++ routines)
 #   work_<sw>_ftn  : same code, but with w3src1md.F90 restored to the all-Fortran version

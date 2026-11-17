@@ -1,5 +1,5 @@
 name: st1_cpp_vs_fortran
-# Checks that the C++ ST1 routines (ww4_ST1_1point.cpp, called from w3src1md.F90)
+# Checks that the C++ ST1 routines (ST1_ww3.cpp, called from w3src1md.F90)
 # give bit-identical results to the original all-Fortran w3src1md.F90. 
 # 
 # For each ST1 regression test, WW3 is built and run twice from the same checkout:
@@ -11,13 +11,13 @@ on:
   pull_request:
     paths:
       - 'model/src/w3src1md.F90'
-      - 'model/src/ww4_ST1_1point.cpp'
+      - 'model/src/ST1_ww3.cpp'
       - 'model/src/CMakeLists.txt'
       - '.github/workflows/st1_cpp_vs_fortran.yml'
   push:
     paths:
       - 'model/src/w3src1md.F90'
-      - 'model/src/ww4_ST1_1point.cpp'
+      - 'model/src/ST1_ww3.cpp'
       - 'model/src/CMakeLists.txt'
       - '.github/workflows/st1_cpp_vs_fortran.yml'
 

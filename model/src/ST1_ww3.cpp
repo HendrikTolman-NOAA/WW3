@@ -3,7 +3,7 @@
  *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
  *       +--------------------------------------------------------+
  *
- * @file ww4_ST1_1point.cpp
+ * @file ST1_ww3.cpp
  * @brief Single-point WAM-3 (ST1) source term routines for WAVEWATCH IV (WW4).
  * @details Pure C++20 implementations of the ST1 mean wave parameters (W3SPR1),
  * wind input (W3SIN1) and whitecapping dissipation (W3SDS1) for one spatial

@@ -38,13 +38,16 @@ namespace ww4_st1 {
 /// Offset in the wind input diagonal term of the WAM-3 method.
 constexpr float kSin1Offset = 0.035714F;
 
-/// Lower limit on the frequency and wavenumber integrals in the mean parameters (avoids division by zero).
+/// Lower limit on the frequency and wavenumber integrals in the mean parameters
+/// (avoids division by zero).
 constexpr float kMinMeanSum = 1.0e-7F;
 
 // --- compute_w3sin1 ---------------------------------------------------------
 /**
- * @brief Performs the actual computation for the ST1 input source term (W3SIN1).
- * @details Calculates the diagonal of the input source term and the source term itself using the WAM-3 method.
+ * @brief Performs the actual computation for the ST1 input source term
+ * (W3SIN1).
+ * @details Calculates the diagonal of the input source term and the source term
+ * itself using the WAM-3 method.
  * @param[in] A Action density spectrum (1-D array of size nspec).
  * @param[in] K Wavenumber for the entire spectrum (1-D array of size nspec).
  * @param[in] ustar Friction velocity.
@@ -57,29 +60,39 @@ constexpr float kMinMeanSum = 1.0e-7F;
  * @param[in] ecos Cosine of direction bins (1-D array of size nspec).
  * @param[in] esin Sine of direction bins (1-D array of size nspec).
  * @pre All spans have the same size nspec.
- * @post The arrays S and D are populated with the calculated input source terms.
+ * @post The arrays S and D are populated with the calculated input source
+ * terms.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from WW3 W3SIN1 by Hendrik L. Tolman.
  * @date Initial: 2026-08-12
  * @date Last update: 2026-11-17
  */
-constexpr void compute_w3sin1(const std::span<const float> A, const std::span<const float> K, const float ustar,
-                              const float cosu, const float sinu, const std::span<float> S, const std::span<float> D,
-                              const float sinc1, const std::span<const float> sig2, const std::span<const float> ecos,
+constexpr void compute_w3sin1(const std::span<const float> A,
+                              const std::span<const float> K, const float ustar,
+                              const float cosu, const float sinu,
+                              const std::span<float> S,
+                              const std::span<float> D, const float sinc1,
+                              const std::span<const float> sig2,
+                              const std::span<const float> ecos,
                               const std::span<const float> esin) noexcept {
-    // === Section: Diagonal and source term ==================================
-    for (std::size_t is = 0; is < A.size(); ++is) {
-        const float term = (((ustar * ((ecos[is] * cosu) + (esin[is] * sinu))) * K[is]) / sig2[is]) - kSin1Offset;
-        D[is] = (sinc1 * sig2[is]) * std::max(0.0F, term);
-        S[is] = D[is] * A[is];
-    }
+  // === Section: Diagonal and source term ==================================
+  for (std::size_t is = 0; is < A.size(); ++is) {
+    const float term =
+        (((ustar * ((ecos[is] * cosu) + (esin[is] * sinu))) * K[is]) /
+         sig2[is]) -
+        kSin1Offset;
+    D[is] = (sinc1 * sig2[is]) * std::max(0.0F, term);
+    S[is] = D[is] * A[is];
+  }
 }
 
 // --- compute_w3sds1 ---------------------------------------------------------
 /**
- * @brief Performs the actual computation for the ST1 dissipation source term (W3SDS1).
- * @details Calculates the whitecapping source term and diagonal term of its derivative using the WAM-3 method.
+ * @brief Performs the actual computation for the ST1 dissipation source term
+ * (W3SDS1).
+ * @details Calculates the whitecapping source term and diagonal term of its
+ * derivative using the WAM-3 method.
  * @param[in] A Action density spectrum (1-D array of size nspec).
  * @param[in] K Wavenumber for the entire spectrum (1-D array of size nspec).
  * @param[in] emean Mean wave energy.
@@ -89,34 +102,42 @@ constexpr void compute_w3sin1(const std::span<const float> A, const std::span<co
  * @param[out] D Computed diagonal term of derivative (1-D array of size nspec).
  * @param[in] sdsc1 Dissipation calibration constant.
  * @pre All spans have the same size nspec.
- * @post The arrays S and D are populated with the calculated dissipation source terms.
+ * @post The arrays S and D are populated with the calculated dissipation source
+ * terms.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from WW3 W3SDS1 by Hendrik L. Tolman.
  * @date Initial: 2026-08-12
  * @date Last update: 2026-11-17
  */
-constexpr void compute_w3sds1(const std::span<const float> A, const std::span<const float> K, const float emean,
-                              const float fmean, const float wnmean, const std::span<float> S, const std::span<float> D,
+constexpr void compute_w3sds1(const std::span<const float> A,
+                              const std::span<const float> K, const float emean,
+                              const float fmean, const float wnmean,
+                              const std::span<float> S,
+                              const std::span<float> D,
                               const float sdsc1) noexcept {
-    // === Section: Common factor =============================================
-    const float factor = ((sdsc1 * fmean) * (wnmean * wnmean * wnmean)) * (emean * emean);
+  // === Section: Common factor =============================================
+  const float factor =
+      ((sdsc1 * fmean) * (wnmean * wnmean * wnmean)) * (emean * emean);
 
-    // === Section: Diagonal and source term ==================================
-    for (std::size_t is = 0; is < A.size(); ++is) {
-        D[is] = factor * K[is];
-        S[is] = D[is] * A[is];
-    }
+  // === Section: Diagonal and source term ==================================
+  for (std::size_t is = 0; is < A.size(); ++is) {
+    D[is] = factor * K[is];
+    S[is] = D[is] * A[is];
+  }
 }
 
 // --- compute_w3spr1 ---------------------------------------------------------
 /**
- * @brief Computes the mean wave parameters used by the ST1 source terms (W3SPR1).
- * @details Calculates the mean wave energy, mean frequency, mean wavenumber and maximum action density
- *          of a spectrum (WAM-3 method), including the parametric tail beyond the discrete spectrum.
- *          The summation order matches the Fortran original so results are reproducible.
- *          The 2-D spectrum uses Fortran (column-major) layout, A(ith, ik) = A[ith + nth * ik].
- * @param[in] A Action density as a function of direction and wavenumber (size nth * nk).
+ * @brief Computes the mean wave parameters used by the ST1 source terms
+ * (W3SPR1).
+ * @details Calculates the mean wave energy, mean frequency, mean wavenumber and
+ * maximum action density of a spectrum (WAM-3 method), including the parametric
+ * tail beyond the discrete spectrum. The summation order matches the Fortran
+ * original so results are reproducible. The 2-D spectrum uses Fortran
+ * (column-major) layout, A(ith, ik) = A[ith + nth * ik].
+ * @param[in] A Action density as a function of direction and wavenumber (size
+ * nth * nk).
  * @param[in] cg Group velocities (size nk).
  * @param[in] wn Wavenumbers (size nk).
  * @param[in] sig Radian frequencies (size nk).
@@ -138,46 +159,50 @@ constexpr void compute_w3sds1(const std::span<const float> A, const std::span<co
  * @date Initial: 2026-11-17
  * @date Last update: 2026-11-17
  */
-void compute_w3spr1(const std::span<const float> A, const std::span<const float> cg, const std::span<const float> wn,
-                    const std::span<const float> sig, const std::span<const float> dden, const std::size_t nth,
-                    const float fte, const float ftf, const float ftwn, const float tpiinv, float &emean, float &fmean,
+void compute_w3spr1(const std::span<const float> A,
+                    const std::span<const float> cg,
+                    const std::span<const float> wn,
+                    const std::span<const float> sig,
+                    const std::span<const float> dden, const std::size_t nth,
+                    const float fte, const float ftf, const float ftwn,
+                    const float tpiinv, float &emean, float &fmean,
                     float &wnmean, float &amax) noexcept {
-    const std::size_t nk = cg.size();
+  const std::size_t nk = cg.size();
 
-    float esum = 0.0F;
-    float fsum = 0.0F;
-    float wsum = 0.0F;
-    float amx = 0.0F;
-    float eband = 0.0F;
+  float esum = 0.0F;
+  float fsum = 0.0F;
+  float wsum = 0.0F;
+  float amx = 0.0F;
+  float eband = 0.0F;
 
-    for (std::size_t ik = 0; ik < nk; ++ik) {
-        // === Section: Integral over directions ==============================
-        eband = 0.0F;
-        for (std::size_t ith = 0; ith < nth; ++ith) {
-            const float act = A[ith + (nth * ik)];
-            eband += act;
-            amx = std::max(amx, act);
-        }
-        // === Section: Integral over frequencies =============================
-        eband = (eband * dden[ik]) / cg[ik];
-        esum += eband;
-        fsum += eband / sig[ik];
-        wsum += eband / std::sqrt(wn[ik]);
+  for (std::size_t ik = 0; ik < nk; ++ik) {
+    // === Section: Integral over directions ==============================
+    eband = 0.0F;
+    for (std::size_t ith = 0; ith < nth; ++ith) {
+      const float act = A[ith + (nth * ik)];
+      eband += act;
+      amx = std::max(amx, act);
     }
+    // === Section: Integral over frequencies =============================
+    eband = (eband * dden[ik]) / cg[ik];
+    esum += eband;
+    fsum += eband / sig[ik];
+    wsum += eband / std::sqrt(wn[ik]);
+  }
 
-    // === Section: Tail beyond discrete spectrum =============================
-    // eband holds the energy of the last discrete band
-    const float etail = eband / dden[nk - 1];
-    esum += etail * fte;
-    fsum += etail * ftf;
-    wsum += etail * ftwn;
+  // === Section: Tail beyond discrete spectrum =============================
+  // eband holds the energy of the last discrete band
+  const float etail = eband / dden[nk - 1];
+  esum += etail * fte;
+  fsum += etail * ftf;
+  wsum += etail * ftwn;
 
-    // === Section: Final processing ==========================================
-    fmean = (tpiinv * esum) / std::max(kMinMeanSum, fsum);
-    const float wnm = esum / std::max(kMinMeanSum, wsum);
-    wnmean = wnm * wnm;
-    emean = esum;
-    amax = amx;
+  // === Section: Final processing ==========================================
+  fmean = (tpiinv * esum) / std::max(kMinMeanSum, fsum);
+  const float wnm = esum / std::max(kMinMeanSum, wsum);
+  wnmean = wnm * wnm;
+  emean = esum;
+  amax = amx;
 }
 
 } // namespace ww4_st1
@@ -188,7 +213,8 @@ extern "C" {
 // --- w3sin1_cpp -------------------------------------------------------------
 /**
  * @brief Fortran interface to compute_w3sin1.
- * @details Wraps the raw Fortran arrays in non-owning spans and forwards to ww4_st1::compute_w3sin1.
+ * @details Wraps the raw Fortran arrays in non-owning spans and forwards to
+ * ww4_st1::compute_w3sin1.
  * @param[in] A Action density spectrum (size nspec).
  * @param[in] K Wavenumber for the entire spectrum (size nspec).
  * @param[in] ustar Friction velocity.
@@ -207,19 +233,24 @@ extern "C" {
  * @date Initial: 2026-08-12
  * @date Last update: 2026-11-17
  */
-void w3sin1_cpp(const float *const A, const float *const K, const float ustar, const float cosu, const float sinu,
-                float *const S, float *const D, const int nspec, const float sinc1, const float *const sig2,
-                const float *const ecos, const float *const esin) noexcept {
-    const auto n = static_cast<std::size_t>(nspec);
-    ww4_st1::compute_w3sin1(std::span<const float>(A, n), std::span<const float>(K, n), ustar, cosu, sinu,
-                            std::span<float>(S, n), std::span<float>(D, n), sinc1, std::span<const float>(sig2, n),
-                            std::span<const float>(ecos, n), std::span<const float>(esin, n));
+void w3sin1_cpp(const float *const A, const float *const K, const float ustar,
+                const float cosu, const float sinu, float *const S,
+                float *const D, const int nspec, const float sinc1,
+                const float *const sig2, const float *const ecos,
+                const float *const esin) noexcept {
+  const auto n = static_cast<std::size_t>(nspec);
+  ww4_st1::compute_w3sin1(
+      std::span<const float>(A, n), std::span<const float>(K, n), ustar, cosu,
+      sinu, std::span<float>(S, n), std::span<float>(D, n), sinc1,
+      std::span<const float>(sig2, n), std::span<const float>(ecos, n),
+      std::span<const float>(esin, n));
 }
 
 // --- w3sds1_cpp -------------------------------------------------------------
 /**
  * @brief Fortran interface to compute_w3sds1.
- * @details Wraps the raw Fortran arrays in non-owning spans and forwards to ww4_st1::compute_w3sds1.
+ * @details Wraps the raw Fortran arrays in non-owning spans and forwards to
+ * ww4_st1::compute_w3sds1.
  * @param[in] A Action density spectrum (size nspec).
  * @param[in] K Wavenumber for the entire spectrum (size nspec).
  * @param[in] emean Mean wave energy.
@@ -235,18 +266,22 @@ void w3sin1_cpp(const float *const A, const float *const K, const float ustar, c
  * @date Initial: 2026-08-12
  * @date Last update: 2026-11-17
  */
-void w3sds1_cpp(const float *const A, const float *const K, const float emean, const float fmean, const float wnmean,
-                float *const S, float *const D, const int nspec, const float sdsc1) noexcept {
-    const auto n = static_cast<std::size_t>(nspec);
-    ww4_st1::compute_w3sds1(std::span<const float>(A, n), std::span<const float>(K, n), emean, fmean, wnmean,
-                            std::span<float>(S, n), std::span<float>(D, n), sdsc1);
+void w3sds1_cpp(const float *const A, const float *const K, const float emean,
+                const float fmean, const float wnmean, float *const S,
+                float *const D, const int nspec, const float sdsc1) noexcept {
+  const auto n = static_cast<std::size_t>(nspec);
+  ww4_st1::compute_w3sds1(
+      std::span<const float>(A, n), std::span<const float>(K, n), emean, fmean,
+      wnmean, std::span<float>(S, n), std::span<float>(D, n), sdsc1);
 }
 
 // --- w3spr1_cpp -------------------------------------------------------------
 /**
  * @brief Fortran interface to compute_w3spr1.
- * @details A is the Fortran array A(nth, nk). Output scalars are passed by reference (Fortran default).
- * @param[in] A Action density as a function of direction and wavenumber (size nth * nk).
+ * @details A is the Fortran array A(nth, nk). Output scalars are passed by
+ * reference (Fortran default).
+ * @param[in] A Action density as a function of direction and wavenumber (size
+ * nth * nk).
  * @param[in] cg Group velocities (size nk).
  * @param[in] wn Wavenumbers (size nk).
  * @param[in] sig Radian frequencies (size nk).
@@ -267,16 +302,19 @@ void w3sds1_cpp(const float *const A, const float *const K, const float emean, c
  * @date Initial: 2026-11-17
  * @date Last update: 2026-11-17
  */
-void w3spr1_cpp(const float *const A, const float *const cg, const float *const wn, const float *const sig,
-                const float *const dden, const int nth, const int nk, const float fte, const float ftf,
-                const float ftwn, const float tpiinv, float *const emean, float *const fmean, float *const wnmean,
-                float *const amax) noexcept {
-    const auto nkz = static_cast<std::size_t>(nk);
-    const auto nthz = static_cast<std::size_t>(nth);
-    ww4_st1::compute_w3spr1(std::span<const float>(A, nthz * nkz), std::span<const float>(cg, nkz),
-                            std::span<const float>(wn, nkz), std::span<const float>(sig, nkz),
-                            std::span<const float>(dden, nkz), nthz, fte, ftf, ftwn, tpiinv, *emean, *fmean, *wnmean,
-                            *amax);
+void w3spr1_cpp(const float *const A, const float *const cg,
+                const float *const wn, const float *const sig,
+                const float *const dden, const int nth, const int nk,
+                const float fte, const float ftf, const float ftwn,
+                const float tpiinv, float *const emean, float *const fmean,
+                float *const wnmean, float *const amax) noexcept {
+  const auto nkz = static_cast<std::size_t>(nk);
+  const auto nthz = static_cast<std::size_t>(nth);
+  ww4_st1::compute_w3spr1(
+      std::span<const float>(A, nthz * nkz), std::span<const float>(cg, nkz),
+      std::span<const float>(wn, nkz), std::span<const float>(sig, nkz),
+      std::span<const float>(dden, nkz), nthz, fte, ftf, ftwn, tpiinv, *emean,
+      *fmean, *wnmean, *amax);
 }
 
 } // extern "C"

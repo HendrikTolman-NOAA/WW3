@@ -159,11 +159,14 @@ jobs:
           tst=${{ matrix.test }}
           sw=${{ matrix.switch }}
           cd ${GITHUB_WORKSPACE}/ww3/regtests
-          ./bin/test.comp $tst work_${sw} work_${sw}_ftn | tee comp.txt
+          ./bin/test.comp $tst work_${sw} work_${sw}_ftn | tee comp_all.txt
+          # Build products (build/, exe/) always differ between the two builds
+          # (different source paths and w3src1md.F90), so only model output is checked.
+          grep -vE "(^|Warning: )(build|exe)/" comp_all.txt > comp.txt || true
           nsame=$(grep -c " is identical" comp.txt || true)
           ndiff=$(grep -c " is different" comp.txt || true)
-          echo "Identical files: $nsame, different files: $ndiff"
-          echo "### $tst $sw: $nsame identical, $ndiff different" >> $GITHUB_STEP_SUMMARY
+          echo "Identical model output files: $nsame, different: $ndiff"
+          echo "### $tst $sw: $nsame identical, $ndiff different model output files" >> $GITHUB_STEP_SUMMARY
           grep " is different" comp.txt >> $GITHUB_STEP_SUMMARY || true
           if [ "$nsame" -eq 0 ]; then
             echo "No output files were compared"; exit 1

@@ -11,15 +11,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-# Set I_MPI_CC/F90 so Intel MPI wrapper uses icc/ifort instead of gcc/gfortran
+# Set I_MPI_CC/F90/CXX so Intel MPI wrapper uses icc/ifort/icpc instead of gcc/gfortran/g++
+# for the Spack dependencies (ESMF passes Intel-only flags to its C++ compiler).
+# The WW3 C++20 code is compiled with g++ in the build job (CXX=mpicxx, I_MPI_CXX=g++).
 env:
   cache_key: intel10-11
   CC: icc
   FC: ifort
-  CXX: g++
+  CXX: icpc
   I_MPI_CC: icc
   I_MPI_F90: ifort
-  I_MPI_CXX: g++
+  I_MPI_CXX: icpc
 
 # Split into a dependency build step, and a WW3 build step which
 # builds multiple switches in a matrix. The setup is run once and
@@ -73,7 +75,6 @@ jobs:
           spack env create ww3-intel ww3/model/ci/spack_intel.yaml
           spack env activate ww3-intel
           spack compiler find
-          python3 ww3/model/ci/modify_compilers.py
           sudo apt install cmake
           spack external find
           spack config add "packages:mpi:require:'intel-oneapi-mpi'"
@@ -101,7 +102,7 @@ jobs:
     strategy:
       matrix:
         switch: [Ifremer1, NCEP_st2, NCEP_st4, ite_pdlib, NCEP_st4sbs, NCEP_glwu, OASACM, UKMO, MULTI_ESMF]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
       - name: checkout-ww3

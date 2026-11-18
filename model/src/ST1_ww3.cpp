@@ -4,12 +4,14 @@
  *       +--------------------------------------------------------+
  *
  * @file ST1_ww3.cpp
- * @brief Single-point WAM-3 (ST1) source term routines for WAVEWATCH IV (WW4).
+ * @brief Implementation of the single-point WAM-3 (ST1) source term routines
+ * for WAVEWATCH IV (WW4).
  * @details Pure C++20 implementations of the ST1 mean wave parameters (W3SPR1),
  * wind input (W3SIN1) and whitecapping dissipation (W3SDS1) for one spatial
  * point, with C-compatible interfaces called from the WAVEWATCH III (WW3)
  * Fortran module w3src1md.F90. Starting point of the WW4 conversion of the
- * ST1 source terms.
+ * ST1 source terms. The routines, the input spectrum (wave action density
+ * N(k,theta)) and the journal references are documented in ST1_ww3.h.
  *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
@@ -23,10 +25,13 @@
  * @author Code Heritage: Converted and adapted from WAVEWATCH III (WW3)
  * w3src1md.F90 (W3SPR1, W3SIN1, W3SDS1) by Hendrik L. Tolman.
  * @date Initial: 2026-08-12
- * @date Last update: 2026-11-17
+ * @date Last update: 2026-11-18
  */
 
-// Library
+// Local
+#include "ST1_ww3.h"
+
+// System
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -43,39 +48,14 @@ constexpr float kSin1Offset = 0.035714F;
 constexpr float kMinMeanSum = 1.0e-7F;
 
 // --- compute_w3sin1 ---------------------------------------------------------
-/**
- * @brief Performs the actual computation for the ST1 input source term
- * (W3SIN1).
- * @details Calculates the diagonal of the input source term and the source term
- * itself using the WAM-3 method.
- * @param[in] A Action density spectrum (1-D array of size nspec).
- * @param[in] K Wavenumber for the entire spectrum (1-D array of size nspec).
- * @param[in] ustar Friction velocity.
- * @param[in] cosu Cosine of the direction of ustar.
- * @param[in] sinu Sine of the direction of ustar.
- * @param[out] S Computed input source term (1-D array of size nspec).
- * @param[out] D Computed diagonal term of derivative (1-D array of size nspec).
- * @param[in] sinc1 Input calibration constant.
- * @param[in] sig2 Group of frequencies squared (1-D array of size nspec).
- * @param[in] ecos Cosine of direction bins (1-D array of size nspec).
- * @param[in] esin Sine of direction bins (1-D array of size nspec).
- * @pre All spans have the same size nspec.
- * @post The arrays S and D are populated with the calculated input source
- * terms.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
- * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
- * @author Code Heritage: Converted from WW3 W3SIN1 by Hendrik L. Tolman.
- * @date Initial: 2026-08-12
- * @date Last update: 2026-11-17
- */
-constexpr void compute_w3sin1(const std::span<const float> A,
-                              const std::span<const float> K, const float ustar,
-                              const float cosu, const float sinu,
-                              const std::span<float> S,
-                              const std::span<float> D, const float sinc1,
-                              const std::span<const float> sig2,
-                              const std::span<const float> ecos,
-                              const std::span<const float> esin) noexcept {
+// Documented in ST1_ww3.h.
+void compute_w3sin1(const std::span<const float> A,
+                    const std::span<const float> K, const float ustar,
+                    const float cosu, const float sinu,
+                    const std::span<float> S, const std::span<float> D,
+                    const float sinc1, const std::span<const float> sig2,
+                    const std::span<const float> ecos,
+                    const std::span<const float> esin) noexcept {
   // === Section: Diagonal and source term ==================================
   for (std::size_t is = 0; is < A.size(); ++is) {
     const float term =
@@ -88,34 +68,12 @@ constexpr void compute_w3sin1(const std::span<const float> A,
 }
 
 // --- compute_w3sds1 ---------------------------------------------------------
-/**
- * @brief Performs the actual computation for the ST1 dissipation source term
- * (W3SDS1).
- * @details Calculates the whitecapping source term and diagonal term of its
- * derivative using the WAM-3 method.
- * @param[in] A Action density spectrum (1-D array of size nspec).
- * @param[in] K Wavenumber for the entire spectrum (1-D array of size nspec).
- * @param[in] emean Mean wave energy.
- * @param[in] fmean Mean wave frequency.
- * @param[in] wnmean Mean wavenumber.
- * @param[out] S Computed dissipation source term (1-D array of size nspec).
- * @param[out] D Computed diagonal term of derivative (1-D array of size nspec).
- * @param[in] sdsc1 Dissipation calibration constant.
- * @pre All spans have the same size nspec.
- * @post The arrays S and D are populated with the calculated dissipation source
- * terms.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
- * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
- * @author Code Heritage: Converted from WW3 W3SDS1 by Hendrik L. Tolman.
- * @date Initial: 2026-08-12
- * @date Last update: 2026-11-17
- */
-constexpr void compute_w3sds1(const std::span<const float> A,
-                              const std::span<const float> K, const float emean,
-                              const float fmean, const float wnmean,
-                              const std::span<float> S,
-                              const std::span<float> D,
-                              const float sdsc1) noexcept {
+// Documented in ST1_ww3.h.
+void compute_w3sds1(const std::span<const float> A,
+                    const std::span<const float> K, const float emean,
+                    const float fmean, const float wnmean,
+                    const std::span<float> S, const std::span<float> D,
+                    const float sdsc1) noexcept {
   // === Section: Common factor =============================================
   const float factor =
       ((sdsc1 * fmean) * (wnmean * wnmean * wnmean)) * (emean * emean);
@@ -128,37 +86,7 @@ constexpr void compute_w3sds1(const std::span<const float> A,
 }
 
 // --- compute_w3spr1 ---------------------------------------------------------
-/**
- * @brief Computes the mean wave parameters used by the ST1 source terms
- * (W3SPR1).
- * @details Calculates the mean wave energy, mean frequency, mean wavenumber and
- * maximum action density of a spectrum (WAM-3 method), including the parametric
- * tail beyond the discrete spectrum. The summation order matches the Fortran
- * original so results are reproducible. The 2-D spectrum uses Fortran
- * (column-major) layout, A(ith, ik) = A[ith + nth * ik].
- * @param[in] A Action density as a function of direction and wavenumber (size
- * nth * nk).
- * @param[in] cg Group velocities (size nk).
- * @param[in] wn Wavenumbers (size nk).
- * @param[in] sig Radian frequencies (size nk).
- * @param[in] dden Frequency band width factors, DDEN (size nk).
- * @param[in] nth Number of directions.
- * @param[in] fte Factor in tail integration of energy.
- * @param[in] ftf Factor in tail integration of frequency.
- * @param[in] ftwn Factor in tail integration of wavenumber.
- * @param[in] tpiinv Inverse of 2*Pi.
- * @param[out] emean Mean wave energy.
- * @param[out] fmean Mean wave frequency.
- * @param[out] wnmean Mean wavenumber.
- * @param[out] amax Maximum action density in the spectrum.
- * @pre cg, wn, sig and dden have the same size nk > 0, and A has size nth * nk.
- * @post emean, fmean, wnmean and amax are set.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
- * @author Contributors: Kiro (Agentic AI/SI)
- * @author Code Heritage: Converted from WW3 W3SPR1 by Hendrik L. Tolman.
- * @date Initial: 2026-11-17
- * @date Last update: 2026-11-17
- */
+// Documented in ST1_ww3.h.
 void compute_w3spr1(const std::span<const float> A,
                     const std::span<const float> cg,
                     const std::span<const float> wn,
@@ -211,28 +139,7 @@ void compute_w3spr1(const std::span<const float> A,
 extern "C" {
 
 // --- w3sin1_cpp -------------------------------------------------------------
-/**
- * @brief Fortran interface to compute_w3sin1.
- * @details Wraps the raw Fortran arrays in non-owning spans and forwards to
- * ww4_st1::compute_w3sin1.
- * @param[in] A Action density spectrum (size nspec).
- * @param[in] K Wavenumber for the entire spectrum (size nspec).
- * @param[in] ustar Friction velocity.
- * @param[in] cosu Cosine of the direction of ustar.
- * @param[in] sinu Sine of the direction of ustar.
- * @param[out] S Computed input source term (size nspec).
- * @param[out] D Computed diagonal term of derivative (size nspec).
- * @param[in] nspec Number of spectral bins.
- * @param[in] sinc1 Input calibration constant.
- * @param[in] sig2 Group of frequencies squared (size nspec).
- * @param[in] ecos Cosine of direction bins (size nspec).
- * @param[in] esin Sine of direction bins (size nspec).
- * @pre All arrays are allocated with at least nspec elements.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
- * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
- * @date Initial: 2026-08-12
- * @date Last update: 2026-11-17
- */
+// Documented in ST1_ww3.h.
 void w3sin1_cpp(const float *const A, const float *const K, const float ustar,
                 const float cosu, const float sinu, float *const S,
                 float *const D, const int nspec, const float sinc1,
@@ -247,25 +154,7 @@ void w3sin1_cpp(const float *const A, const float *const K, const float ustar,
 }
 
 // --- w3sds1_cpp -------------------------------------------------------------
-/**
- * @brief Fortran interface to compute_w3sds1.
- * @details Wraps the raw Fortran arrays in non-owning spans and forwards to
- * ww4_st1::compute_w3sds1.
- * @param[in] A Action density spectrum (size nspec).
- * @param[in] K Wavenumber for the entire spectrum (size nspec).
- * @param[in] emean Mean wave energy.
- * @param[in] fmean Mean wave frequency.
- * @param[in] wnmean Mean wavenumber.
- * @param[out] S Computed dissipation source term (size nspec).
- * @param[out] D Computed diagonal term of derivative (size nspec).
- * @param[in] nspec Number of spectral bins.
- * @param[in] sdsc1 Dissipation calibration constant.
- * @pre All arrays are allocated with at least nspec elements.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
- * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
- * @date Initial: 2026-08-12
- * @date Last update: 2026-11-17
- */
+// Documented in ST1_ww3.h.
 void w3sds1_cpp(const float *const A, const float *const K, const float emean,
                 const float fmean, const float wnmean, float *const S,
                 float *const D, const int nspec, const float sdsc1) noexcept {
@@ -276,32 +165,7 @@ void w3sds1_cpp(const float *const A, const float *const K, const float emean,
 }
 
 // --- w3spr1_cpp -------------------------------------------------------------
-/**
- * @brief Fortran interface to compute_w3spr1.
- * @details A is the Fortran array A(nth, nk). Output scalars are passed by
- * reference (Fortran default).
- * @param[in] A Action density as a function of direction and wavenumber (size
- * nth * nk).
- * @param[in] cg Group velocities (size nk).
- * @param[in] wn Wavenumbers (size nk).
- * @param[in] sig Radian frequencies (size nk).
- * @param[in] dden Frequency band width factors (size nk).
- * @param[in] nth Number of directions.
- * @param[in] nk Number of wavenumbers.
- * @param[in] fte Factor in tail integration of energy.
- * @param[in] ftf Factor in tail integration of frequency.
- * @param[in] ftwn Factor in tail integration of wavenumber.
- * @param[in] tpiinv Inverse of 2*Pi.
- * @param[out] emean Mean wave energy.
- * @param[out] fmean Mean wave frequency.
- * @param[out] wnmean Mean wavenumber.
- * @param[out] amax Maximum action density in the spectrum.
- * @pre nk > 0 and all arrays are allocated with the sizes given above.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
- * @author Contributors: Kiro (Agentic AI/SI)
- * @date Initial: 2026-11-17
- * @date Last update: 2026-11-17
- */
+// Documented in ST1_ww3.h.
 void w3spr1_cpp(const float *const A, const float *const cg,
                 const float *const wn, const float *const sig,
                 const float *const dden, const int nth, const int nk,

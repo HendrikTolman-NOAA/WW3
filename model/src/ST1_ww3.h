@@ -10,6 +10,9 @@
  * (W3SPR1), wind input (W3SIN1) and whitecapping dissipation (W3SDS1) for one
  * spatial point, and their C-compatible interfaces called from the WAVEWATCH
  * III (WW3) Fortran module w3src1md.F90. Implementations are in ST1_ww3.cpp.
+ * The ww4_st1 routines use descriptive variable names. The extern "C"
+ * wrappers keep the WW3 Fortran names (A, K, SIG2, EMEAN, ...) for easy
+ * cross-referencing with w3src1md.F90.
  *
  * Input spectrum: all routines take the wave action density spectrum
  * N(k,theta) = F(k,theta) / sigma, as a function of wavenumber k and wave
@@ -61,34 +64,46 @@ namespace ww4_st1 {
  * al. (1984): S_in = D * N with diagonal term
  * D = C * sigma * max[0, (u_* / c) cos(theta - theta_w) - 1/28],
  * where c = sigma / k is the phase velocity and C = 28 C_in rho_a / rho_w.
- * @param[in] A Wave action density spectrum N(k,theta) in 1-D (flattened) form
- * (size nspec = nth * nk), see file description.
- * @param[in] K Wavenumber of each spectral bin (size nspec).
- * @param[in] ustar Wind friction velocity u_*.
- * @param[in] cosu Cosine of the wind (friction velocity) direction theta_w.
- * @param[in] sinu Sine of the wind (friction velocity) direction theta_w.
- * @param[out] S Wind input source term in action density form (size nspec).
- * @param[out] D Diagonal term of the derivative of S with respect to A (size
+ * Snyder et al. (1981) expressed the growth rate with the wind speed U_5 at
+ * 5 m height, which Komen et al. (1984) replaced by U_5 = 28 u_*. Wind input
+ * therefore only acts on components with c < 28 u_* cos(theta - theta_w).
+ * @param[in] action_density Wave action density spectrum N(k,theta) in 1-D
+ * (flattened) form (size nspec = nth * nk), see file description.
+ * @param[in] wavenumber Wavenumber of each spectral bin (size nspec).
+ * @param[in] friction_velocity Wind friction velocity u_*.
+ * @param[in] cos_wind_dir Cosine of the wind (friction velocity) direction
+ * theta_w.
+ * @param[in] sin_wind_dir Sine of the wind (friction velocity) direction
+ * theta_w.
+ * @param[out] source_term Wind input source term in action density form (size
  * nspec).
- * @param[in] sinc1 Combined input constant 28 C_in rho_a / rho_w (SINC1).
- * @param[in] sig2 Radian frequency sigma of each spectral bin (SIG2, size
+ * @param[out] source_diagonal Diagonal term of the derivative of source_term
+ * with respect to action_density (size nspec).
+ * @param[in] input_coefficient Combined input constant 28 C_in rho_a / rho_w
+ * (SINC1).
+ * @param[in] radian_frequency Radian frequency sigma of each spectral bin
+ * (SIG2, size nspec).
+ * @param[in] cos_direction Cosine of the direction of each spectral bin (size
  * nspec).
- * @param[in] ecos Cosine of the direction of each spectral bin (size nspec).
- * @param[in] esin Sine of the direction of each spectral bin (size nspec).
+ * @param[in] sin_direction Sine of the direction of each spectral bin (size
+ * nspec).
  * @pre All spans have the same size nspec.
- * @post The arrays S and D are populated with the calculated input source
- * terms.
+ * @post The arrays source_term and source_diagonal are populated with the
+ * calculated input source terms.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from WW3 W3SIN1 by Hendrik L. Tolman.
  * @date Initial: 2026-08-12
  * @date Last update: 2026-11-18
  */
-void compute_w3sin1(std::span<const float> A, std::span<const float> K,
-                    float ustar, float cosu, float sinu, std::span<float> S,
-                    std::span<float> D, float sinc1,
-                    std::span<const float> sig2, std::span<const float> ecos,
-                    std::span<const float> esin) noexcept;
+void compute_w3sin1(std::span<const float> action_density,
+                    std::span<const float> wavenumber, float friction_velocity,
+                    float cos_wind_dir, float sin_wind_dir,
+                    std::span<float> source_term,
+                    std::span<float> source_diagonal, float input_coefficient,
+                    std::span<const float> radian_frequency,
+                    std::span<const float> cos_direction,
+                    std::span<const float> sin_direction) noexcept;
 
 // --- compute_w3sds1 ---------------------------------------------------------
 /**
@@ -97,30 +112,34 @@ void compute_w3sin1(std::span<const float> A, std::span<const float> K,
  * (1988): S_ds = D * N with diagonal term
  * D = C_ds sigma_hat (k / k_hat) (alpha_hat / alpha_PM)^2,
  * where alpha_hat = E k_hat^2. This reduces to
- * D = sdsc1 * f_hat * k_hat^3 * E^2 * k.
- * @param[in] A Wave action density spectrum N(k,theta) in 1-D (flattened) form
- * (size nspec = nth * nk), see file description.
- * @param[in] K Wavenumber of each spectral bin (size nspec).
- * @param[in] emean Total wave variance (energy) E of the spectrum.
- * @param[in] fmean Mean wave frequency f_hat (Hz).
- * @param[in] wnmean Mean wavenumber k_hat.
- * @param[out] S Dissipation source term in action density form (size nspec).
- * @param[out] D Diagonal term of the derivative of S with respect to A (size
+ * D = dissipation_coefficient * f_hat * k_hat^3 * E^2 * k.
+ * @param[in] action_density Wave action density spectrum N(k,theta) in 1-D
+ * (flattened) form (size nspec = nth * nk), see file description.
+ * @param[in] wavenumber Wavenumber of each spectral bin (size nspec).
+ * @param[in] total_variance Total wave variance (energy) E of the spectrum.
+ * @param[in] mean_frequency Mean wave frequency f_hat (Hz).
+ * @param[in] mean_wavenumber Mean wavenumber k_hat.
+ * @param[out] source_term Dissipation source term in action density form (size
  * nspec).
- * @param[in] sdsc1 Combined dissipation constant 2 pi C_ds / alpha_PM^2
- * (SDSC1).
+ * @param[out] source_diagonal Diagonal term of the derivative of source_term
+ * with respect to action_density (size nspec).
+ * @param[in] dissipation_coefficient Combined dissipation constant
+ * 2 pi C_ds / alpha_PM^2 (SDSC1).
  * @pre All spans have the same size nspec.
- * @post The arrays S and D are populated with the calculated dissipation source
- * terms.
+ * @post The arrays source_term and source_diagonal are populated with the
+ * calculated dissipation source terms.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from WW3 W3SDS1 by Hendrik L. Tolman.
  * @date Initial: 2026-08-12
  * @date Last update: 2026-11-18
  */
-void compute_w3sds1(std::span<const float> A, std::span<const float> K,
-                    float emean, float fmean, float wnmean, std::span<float> S,
-                    std::span<float> D, float sdsc1) noexcept;
+void compute_w3sds1(std::span<const float> action_density,
+                    std::span<const float> wavenumber, float total_variance,
+                    float mean_frequency, float mean_wavenumber,
+                    std::span<float> source_term,
+                    std::span<float> source_diagonal,
+                    float dissipation_coefficient) noexcept;
 
 // --- compute_w3spr1 ---------------------------------------------------------
 /**
@@ -132,36 +151,46 @@ void compute_w3sds1(std::span<const float> A, std::span<const float> K,
  * plus the maximum action density, including the parametric tail beyond the
  * discrete spectrum. The summation order matches the Fortran original so
  * results are reproducible.
- * @param[in] A Wave action density spectrum N(k,theta) as a 2-D array
- * A(ith, ik) in Fortran (column-major) order (size nth * nk), see file
+ * @param[in] action_density Wave action density spectrum N(k,theta) as a 2-D
+ * array A(ith, ik) in Fortran (column-major) order (size nth * nk), see file
  * description.
- * @param[in] cg Group velocities (size nk).
- * @param[in] wn Wavenumbers (size nk).
- * @param[in] sig Radian frequencies (size nk).
- * @param[in] dden Integration factors DTH * DSII * SIG, converting action
- * density to energy per frequency band (DDEN, size nk).
- * @param[in] nth Number of directions.
- * @param[in] fte Factor in tail integration of energy.
- * @param[in] ftf Factor in tail integration of frequency.
- * @param[in] ftwn Factor in tail integration of wavenumber.
- * @param[in] tpiinv Inverse of 2*Pi.
- * @param[out] emean Total wave variance (energy) E.
- * @param[out] fmean Mean wave frequency f_hat (Hz).
- * @param[out] wnmean Mean wavenumber k_hat.
- * @param[out] amax Maximum action density in the spectrum.
- * @pre cg, wn, sig and dden have the same size nk > 0, and A has size nth * nk.
- * @post emean, fmean, wnmean and amax are set.
+ * @param[in] group_velocity Group velocities (size nk).
+ * @param[in] wavenumber Wavenumbers (size nk).
+ * @param[in] radian_frequency Radian frequencies (size nk).
+ * @param[in] band_integration_factor Integration factors DTH * DSII * SIG,
+ * converting action density to energy per frequency band (DDEN, size nk).
+ * @param[in] num_directions Number of directions nth.
+ * @param[in] tail_factor_energy Factor in tail integration of energy (FTE).
+ * @param[in] tail_factor_frequency Factor in tail integration of frequency
+ * (FTF).
+ * @param[in] tail_factor_wavenumber Factor in tail integration of wavenumber
+ * (FTWN).
+ * @param[in] inv_two_pi Inverse of 2*Pi (TPIINV), passed from Fortran so that
+ * results stay bit-identical to WW3.
+ * @param[out] total_variance Total wave variance (energy) E.
+ * @param[out] mean_frequency Mean wave frequency f_hat (Hz).
+ * @param[out] mean_wavenumber Mean wavenumber k_hat.
+ * @param[out] max_action_density Maximum action density in the spectrum.
+ * @pre group_velocity, wavenumber, radian_frequency and band_integration_factor
+ * have the same size nk > 0, and action_density has size nth * nk.
+ * @post total_variance, mean_frequency, mean_wavenumber and max_action_density
+ * are set.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from WW3 W3SPR1 by Hendrik L. Tolman.
  * @date Initial: 2026-11-17
  * @date Last update: 2026-11-18
  */
-void compute_w3spr1(std::span<const float> A, std::span<const float> cg,
-                    std::span<const float> wn, std::span<const float> sig,
-                    std::span<const float> dden, std::size_t nth, float fte,
-                    float ftf, float ftwn, float tpiinv, float &emean,
-                    float &fmean, float &wnmean, float &amax) noexcept;
+void compute_w3spr1(std::span<const float> action_density,
+                    std::span<const float> group_velocity,
+                    std::span<const float> wavenumber,
+                    std::span<const float> radian_frequency,
+                    std::span<const float> band_integration_factor,
+                    std::size_t num_directions, float tail_factor_energy,
+                    float tail_factor_frequency, float tail_factor_wavenumber,
+                    float inv_two_pi, float &total_variance,
+                    float &mean_frequency, float &mean_wavenumber,
+                    float &max_action_density) noexcept;
 
 } // namespace ww4_st1
 

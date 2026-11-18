@@ -40,97 +40,119 @@
 namespace ww4_st1 {
 
 // --- Constants --------------------------------------------------------------
-/// Offset in the wind input diagonal term of the WAM-3 method.
-constexpr float kSin1Offset = 0.035714F;
+/// Inverse of the wind speed ratio U_5 / u_* = 28 in the WAM-3 wind input
+/// (1/28, value as in the WW3 Fortran code). With it, the growth factor
+/// (u_* / c) cos(theta - theta_w) - 1/28 is positive only for spectral
+/// components with 28 u_* cos(theta - theta_w) > c.
+constexpr float kInvWindSpeedRatio = 0.035714F;
 
 /// Lower limit on the frequency and wavenumber integrals in the mean parameters
 /// (avoids division by zero).
-constexpr float kMinMeanSum = 1.0e-7F;
+constexpr float kMinIntegral = 1.0e-7F;
 
 // --- compute_w3sin1 ---------------------------------------------------------
 // Documented in ST1_ww3.h.
-void compute_w3sin1(const std::span<const float> A,
-                    const std::span<const float> K, const float ustar,
-                    const float cosu, const float sinu,
-                    const std::span<float> S, const std::span<float> D,
-                    const float sinc1, const std::span<const float> sig2,
-                    const std::span<const float> ecos,
-                    const std::span<const float> esin) noexcept {
+void compute_w3sin1(const std::span<const float> action_density,
+                    const std::span<const float> wavenumber,
+                    const float friction_velocity, const float cos_wind_dir,
+                    const float sin_wind_dir,
+                    const std::span<float> source_term,
+                    const std::span<float> source_diagonal,
+                    const float input_coefficient,
+                    const std::span<const float> radian_frequency,
+                    const std::span<const float> cos_direction,
+                    const std::span<const float> sin_direction) noexcept {
   // === Section: Diagonal and source term ==================================
-  for (std::size_t is = 0; is < A.size(); ++is) {
-    const float term =
-        (((ustar * ((ecos[is] * cosu) + (esin[is] * sinu))) * K[is]) /
-         sig2[is]) -
-        kSin1Offset;
-    D[is] = (sinc1 * sig2[is]) * std::max(0.0F, term);
-    S[is] = D[is] * A[is];
+  for (std::size_t is = 0; is < action_density.size(); ++is) {
+    // (u_* / c) cos(theta - theta_w) - 1/28, with c = sigma / k
+    const float wind_forcing =
+        (((friction_velocity * ((cos_direction[is] * cos_wind_dir) +
+                                (sin_direction[is] * sin_wind_dir))) *
+          wavenumber[is]) /
+         radian_frequency[is]) -
+        kInvWindSpeedRatio;
+    source_diagonal[is] = (input_coefficient * radian_frequency[is]) *
+                          std::max(0.0F, wind_forcing);
+    source_term[is] = source_diagonal[is] * action_density[is];
   }
 }
 
 // --- compute_w3sds1 ---------------------------------------------------------
 // Documented in ST1_ww3.h.
-void compute_w3sds1(const std::span<const float> A,
-                    const std::span<const float> K, const float emean,
-                    const float fmean, const float wnmean,
-                    const std::span<float> S, const std::span<float> D,
-                    const float sdsc1) noexcept {
+void compute_w3sds1(const std::span<const float> action_density,
+                    const std::span<const float> wavenumber,
+                    const float total_variance, const float mean_frequency,
+                    const float mean_wavenumber,
+                    const std::span<float> source_term,
+                    const std::span<float> source_diagonal,
+                    const float dissipation_coefficient) noexcept {
   // === Section: Common factor =============================================
-  const float factor =
-      ((sdsc1 * fmean) * (wnmean * wnmean * wnmean)) * (emean * emean);
+  const float dissipation_scale =
+      ((dissipation_coefficient * mean_frequency) *
+       (mean_wavenumber * mean_wavenumber * mean_wavenumber)) *
+      (total_variance * total_variance);
 
   // === Section: Diagonal and source term ==================================
-  for (std::size_t is = 0; is < A.size(); ++is) {
-    D[is] = factor * K[is];
-    S[is] = D[is] * A[is];
+  for (std::size_t is = 0; is < action_density.size(); ++is) {
+    source_diagonal[is] = dissipation_scale * wavenumber[is];
+    source_term[is] = source_diagonal[is] * action_density[is];
   }
 }
 
 // --- compute_w3spr1 ---------------------------------------------------------
 // Documented in ST1_ww3.h.
-void compute_w3spr1(const std::span<const float> A,
-                    const std::span<const float> cg,
-                    const std::span<const float> wn,
-                    const std::span<const float> sig,
-                    const std::span<const float> dden, const std::size_t nth,
-                    const float fte, const float ftf, const float ftwn,
-                    const float tpiinv, float &emean, float &fmean,
-                    float &wnmean, float &amax) noexcept {
-  const std::size_t nk = cg.size();
+void compute_w3spr1(const std::span<const float> action_density,
+                    const std::span<const float> group_velocity,
+                    const std::span<const float> wavenumber,
+                    const std::span<const float> radian_frequency,
+                    const std::span<const float> band_integration_factor,
+                    const std::size_t num_directions,
+                    const float tail_factor_energy,
+                    const float tail_factor_frequency,
+                    const float tail_factor_wavenumber, const float inv_two_pi,
+                    float &total_variance, float &mean_frequency,
+                    float &mean_wavenumber,
+                    float &max_action_density) noexcept {
+  const std::size_t num_wavenumbers = group_velocity.size();
 
-  float esum = 0.0F;
-  float fsum = 0.0F;
-  float wsum = 0.0F;
-  float amx = 0.0F;
-  float eband = 0.0F;
+  float energy_sum = 0.0F;
+  float inv_frequency_sum = 0.0F;
+  float inv_sqrt_wavenumber_sum = 0.0F;
+  float max_action = 0.0F;
+  float band_energy = 0.0F;
 
-  for (std::size_t ik = 0; ik < nk; ++ik) {
+  for (std::size_t ik = 0; ik < num_wavenumbers; ++ik) {
     // === Section: Integral over directions ==============================
-    eband = 0.0F;
-    for (std::size_t ith = 0; ith < nth; ++ith) {
-      const float act = A[ith + (nth * ik)];
-      eband += act;
-      amx = std::max(amx, act);
+    band_energy = 0.0F;
+    for (std::size_t ith = 0; ith < num_directions; ++ith) {
+      const float action = action_density[ith + (num_directions * ik)];
+      band_energy += action;
+      max_action = std::max(max_action, action);
     }
     // === Section: Integral over frequencies =============================
-    eband = (eband * dden[ik]) / cg[ik];
-    esum += eband;
-    fsum += eband / sig[ik];
-    wsum += eband / std::sqrt(wn[ik]);
+    band_energy =
+        (band_energy * band_integration_factor[ik]) / group_velocity[ik];
+    energy_sum += band_energy;
+    inv_frequency_sum += band_energy / radian_frequency[ik];
+    inv_sqrt_wavenumber_sum += band_energy / std::sqrt(wavenumber[ik]);
   }
 
   // === Section: Tail beyond discrete spectrum =============================
-  // eband holds the energy of the last discrete band
-  const float etail = eband / dden[nk - 1];
-  esum += etail * fte;
-  fsum += etail * ftf;
-  wsum += etail * ftwn;
+  // band_energy holds the energy of the last discrete band
+  const float tail_energy =
+      band_energy / band_integration_factor[num_wavenumbers - 1];
+  energy_sum += tail_energy * tail_factor_energy;
+  inv_frequency_sum += tail_energy * tail_factor_frequency;
+  inv_sqrt_wavenumber_sum += tail_energy * tail_factor_wavenumber;
 
   // === Section: Final processing ==========================================
-  fmean = (tpiinv * esum) / std::max(kMinMeanSum, fsum);
-  const float wnm = esum / std::max(kMinMeanSum, wsum);
-  wnmean = wnm * wnm;
-  emean = esum;
-  amax = amx;
+  mean_frequency =
+      (inv_two_pi * energy_sum) / std::max(kMinIntegral, inv_frequency_sum);
+  const float sqrt_mean_wavenumber =
+      energy_sum / std::max(kMinIntegral, inv_sqrt_wavenumber_sum);
+  mean_wavenumber = sqrt_mean_wavenumber * sqrt_mean_wavenumber;
+  total_variance = energy_sum;
+  max_action_density = max_action;
 }
 
 } // namespace ww4_st1

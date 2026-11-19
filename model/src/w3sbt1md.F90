@@ -134,12 +134,7 @@ CONTAINS
     !
     !  4. Subroutines used :
     !
-    !      Name      Type  Module   Description
-    !     ----------------------------------------------------------------
-    !      STRACE    Subr. W3SERVMD Subroutine tracing (!/S switch).
-    !      PRT2DS    Subr. W3ARRYMD Print plot output (!/T1 switch).
-    !      OUTMAT    Subr. W3ARRYMD Matrix output (!/T2 switch).
-    !     ----------------------------------------------------------------
+    !     None.
     !
     !  5. Called by :
     !
@@ -156,35 +151,34 @@ CONTAINS
     !
     !  7. Remarks :
     !
+    !     The source term is computed by the C++ routine W3SBT1_CPP
+    !     (BT1_ww3.cpp, declared in BT1_ww3.h).
+    !
     !  8. Structure :
     !
     !     See source code.
     !
     !  9. Switches :
     !
-    !     !/S  Enable subroutine tracing.
-    !     !/T   Enable general test output.
-    !     !/T0  2-D print plot of source term.
-    !     !/T1  Print arrays.
+    !     None.
     !
     ! 10. Source code :
     !
     !/ ------------------------------------------------------------------- /
-    USE W3GDATMD, ONLY: NK, NTH, NSPEC, SIG, MAPWN, SBTC1
-#ifdef W3_T
-    USE W3ODATMD, ONLY: NDST
-#endif
-#ifdef W3_S
-    USE W3SERVMD, ONLY: STRACE
-#endif
-#ifdef W3_T0
-    USE W3ARRYMD, ONLY: PRT2DS
-#endif
-#ifdef W3_T1
-    USE W3ARRYMD, ONLY: OUTMAT
-#endif
+    USE W3GDATMD, ONLY: NK, NTH, NSPEC, SIG, SBTC1
+    USE, INTRINSIC :: ISO_C_BINDING
     !
     IMPLICIT NONE
+    !/
+    INTERFACE
+      SUBROUTINE W3SBT1_CPP(A, CG, WN, DEPTH, S, D, NTH, NK, SIG, SBTC1) BIND(C, name="w3sbt1_cpp")
+        USE, INTRINSIC :: ISO_C_BINDING
+        INTEGER(C_INT), VALUE, INTENT(IN) :: NTH, NK
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: DEPTH, SBTC1
+        REAL(C_FLOAT), INTENT(IN) :: A(NTH*NK), CG(NK), WN(NK), SIG(NK)
+        REAL(C_FLOAT), INTENT(OUT) :: S(NTH*NK), D(NTH*NK)
+      END SUBROUTINE W3SBT1_CPP
+    END INTERFACE
     !/
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
@@ -193,92 +187,16 @@ CONTAINS
     REAL, INTENT(OUT)       :: S(NSPEC), D(NSPEC)
     !/
     !/ ------------------------------------------------------------------- /
-    !/ Local parameters
     !/
-    INTEGER                 :: IS, IK, NSCUT
-#ifdef W3_S
-    INTEGER, SAVE           :: IENT = 0
-#endif
-#ifdef W3_T0
-    INTEGER                 :: ITH
-#endif
-    REAL                    :: FACTOR, CBETA(NK)
-#ifdef W3_T0
-    REAL                    :: DOUT(NK,NTH)
-#endif
-    !/
-    !/ ------------------------------------------------------------------- /
-    !/
-#ifdef W3_S
-    CALL STRACE (IENT, 'W3SBT1')
-#endif
     !
-    ! 1.  Deep water ===================================================== *
+    ! 1.  Compute source term via C++ ------------------------------------- *
     !
-    IF ( DEPTH*WN(1) .GT. 6 ) THEN
-      !
-      D = 0.
-      S = 0.
-      !
-      ! 2.  Shallow water ================================================== *
-      !
-    ELSE
-      !
-      ! 2.a Set constant
-      !
-      FACTOR = SBTC1 / DEPTH
-      !
-#ifdef W3_T
-      WRITE (NDST,9000) FACTOR, DEPTH
-#endif
-      !
-      ! 2.b Wavenumber dependent part.
-      !
-      DO IK=1, NK
-        IF ( WN(IK)*DEPTH .GT. 6. ) EXIT
-        CBETA(IK) = FACTOR *                                      &
-             MAX(0., (CG(IK)*WN(IK)/SIG(IK)-0.5) )
-      END DO
-      !
-      ! 2.c Fill diagional matrix
-      !
-      NSCUT  = (IK-1)*NTH
-      !
-      DO IS=1, NSCUT
-        D(IS) = CBETA(MAPWN(IS))
-      END DO
-      !
-      DO IS=NSCUT+1, NSPEC
-        D(IS) = 0.
-      END DO
-      !
-      S = D * A
-      !
-    END IF
+    ! SIG(1:NK) is passed as SIG is dimensioned 0:NK+1.
     !
-    ! ... Test output of arrays
-    !
-#ifdef W3_T0
-    DO IK=1, NK
-      DO ITH=1, NTH
-        DOUT(IK,ITH) = D(ITH+(IK-1)*NTH)
-      END DO
-    END DO
-    CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1:), '  ', 1.,    &
-         0.0, 0.001, 'Diag Sbt', ' ', 'NONAME')
-#endif
-    !
-#ifdef W3_T1
-    CALL OUTMAT (NDST, D, NTH, NTH, NK, 'diag Sbt')
-#endif
+    CALL W3SBT1_CPP(A, CG, WN, REAL(DEPTH, C_FLOAT), S, D, &
+                    INT(NTH, C_INT), INT(NK, C_INT), SIG(1:NK), REAL(SBTC1, C_FLOAT))
     !
     RETURN
-    !
-    ! Formats
-    !
-#ifdef W3_T
-9000 FORMAT (' TEST W3SBT1 : FACTOR, DEPTH  : ',2E10.3)
-#endif
     !/
     !/ End of W3SBT1 ----------------------------------------------------- /
     !/

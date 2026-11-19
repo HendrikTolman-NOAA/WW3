@@ -226,12 +226,7 @@ CONTAINS
     !
     !  4. Subroutines used :
     !
-    !      Name      Type  Module   Description
-    !     ----------------------------------------------------------------
-    !      STRACE    Subr. W3SERVMD Subroutine tracing.
-    !      PRT2DS    Subr. W3ARRYMD Print plot of spectra.
-    !      OUTMAT    Subr. W3WRRYMD Print out 2D matrix.
-    !     ----------------------------------------------------------------
+    !     None.
     !
     !  5. Called by :
     !
@@ -267,16 +262,14 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     !/S   Enable subroutine tracing.
-    !     !/T   Enable general test output.
-    !     !/T0  2-D print plot of source term.
-    !     !/T1  Print arrays.
+    !     None. The tracing and test output switches (S, T, T0, T1)
+    !     of the WW3 Fortran version are not supported.
     !
     ! 10. Source code :
     !
     !/ ------------------------------------------------------------------- /
     !/
-    USE CONSTANTS
+    USE CONSTANTS, ONLY: TPIINV
     USE W3GDATMD, ONLY: NK, NTH, NSPEC, SIG, FACHFE,                &
          KDCON, KDMN, SNLC1, SNLS1, SNLS2, SNLS3
     USE W3ADATMD, ONLY: NFRHGH, NSPECX, NSPECY,                  &
@@ -287,24 +280,6 @@ CONTAINS
          DAL1, DAL2, DAL3, AF11,                           &
          AWG1, AWG2, AWG3, AWG4, AWG5, AWG6, AWG7, AWG8,   &
          SWG1, SWG2, SWG3, SWG4, SWG5, SWG6, SWG7, SWG8
-#ifdef W3_T0
-    USE W3ADATMD, ONLY: NFR
-#endif
-#ifdef W3_T
-    USE W3ODATMD, ONLY: NDST
-#endif
-#ifdef W3_T1
-    USE W3ODATMD, ONLY: NDST
-#endif
-#ifdef W3_S
-    USE W3SERVMD, ONLY: STRACE
-#endif
-#ifdef W3_T0
-    USE W3ARRYMD, ONLY: PRT2DS
-#endif
-#ifdef W3_T1
-    USE W3ARRYMD, ONLY: OUTMAT
-#endif
     USE, INTRINSIC :: ISO_C_BINDING
     !
     IMPLICIT NONE
@@ -347,26 +322,10 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-#ifdef W3_S
-    INTEGER, SAVE           :: IENT = 0
-#endif
-#ifdef W3_T0
-    INTEGER                 :: ITH, IFR, ISP
-    REAL                    :: SOUT(NK,NFR), DOUT(NK,NFR)
-#endif
     !/
     !/ ------------------------------------------------------------------- /
     !/
     ! initialisations
-    !
-#ifdef W3_S
-    CALL STRACE (IENT, 'W3SNL1')
-#endif
-    !
-    !
-#ifdef W3_T
-    WRITE (NDST,9000) KDMEAN
-#endif
     !
     ! 1.-4. Source and diagonal terms via C++ ----------------------------- *
     !
@@ -387,34 +346,7 @@ CONTAINS
                     REAL(SWG1, C_FLOAT), REAL(SWG2, C_FLOAT), REAL(SWG3, C_FLOAT), REAL(SWG4, C_FLOAT), &
                     REAL(SWG5, C_FLOAT), REAL(SWG6, C_FLOAT), REAL(SWG7, C_FLOAT), REAL(SWG8, C_FLOAT))
     !
-    ! ... Test output :
-    !
-#ifdef W3_T0
-    DO IFR=1, NFR
-      DO ITH=1, NTH
-        ISP          = ITH + (IFR-1)*NTH
-        SOUT(IFR,ITH) = S(ISP) * TPI * SIG(IFR) / CG(IFR)
-        DOUT(IFR,ITH) = D(ISP)
-      END DO
-    END DO
-    CALL PRT2DS (NDST, NK, NK, NTH, SOUT, SIG(1:), '  ', 1.,  &
-         0.0, 0.001, 'Snl(f,t)', ' ', 'NONAME')
-    CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1:), '  ', 1.,  &
-         0.0, 0.001, 'Diag Snl', ' ', 'NONAME')
-#endif
-    !
-#ifdef W3_T1
-    CALL OUTMAT (NDST, S, NTH, NTH, NK, 'Snl')
-    CALL OUTMAT (NDST, D, NTH, NTH, NK, 'Diag Snl')
-#endif
-    !
     RETURN
-    !
-    ! Formats
-    !
-#ifdef W3_T
-9000 FORMAT (' TEST W3SNL1 : KDMEAN :',F8.2)
-#endif
     !/
     !/ End of W3SNL1 ----------------------------------------------------- /
     !/
@@ -467,10 +399,7 @@ CONTAINS
     !
     !  4. Subroutines used :
     !
-    !      Name      Type  Module   Description
-    !     ----------------------------------------------------------------
-    !      STRACE    Subr. W3SERVMD Subroutine tracing.
-    !     ----------------------------------------------------------------
+    !     None.
     !
     !  5. Called by :
     !
@@ -485,7 +414,6 @@ CONTAINS
     !
     !  7. Remarks :
     !
-    !     - Test output is generated through W3IOGR.
     !     - No testing of IMOD ir resetting of pointers.
     !     - The calculations are carried out by the C++ routines
     !       INSNL1_RANGES_CPP (array sizes) and INSNL1_CPP (addresses,
@@ -503,7 +431,8 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !       !/S      Enable subroutine tracing.
+    !     None. The tracing and test output switches (S, T) of the WW3
+    !     Fortran version are not supported.
     !
     ! 10. Source code :
     !
@@ -520,9 +449,6 @@ CONTAINS
          AWG1, AWG2, AWG3, AWG4, AWG5, AWG6, AWG7, AWG8,   &
          SWG1, SWG2, SWG3, SWG4, SWG5, SWG6, SWG7, SWG8
     USE W3ODATMD, ONLY: NDST, NDSE
-#ifdef W3_S
-    USE W3SERVMD, ONLY: STRACE
-#endif
     USE, INTRINSIC :: ISO_C_BINDING
     !/
     IMPLICIT NONE
@@ -569,21 +495,8 @@ CONTAINS
     !/
     INTEGER, INTENT(IN)     :: IMOD
     !/
-    !/ Local parameters
-    !/
-#ifdef W3_S
-    INTEGER, SAVE           :: IENT = 0
-#endif
-    !/
     !/ ------------------------------------------------------------------- /
     !/
-#ifdef W3_S
-    CALL STRACE (IENT, 'INSNL1')
-#endif
-#ifdef W3_T
-    WRITE (NDST,9000) IMOD
-#endif
-    !
     NFR     = NK
     !
     ! 1.-5. Internal angles, weights, indices and range of calculations
@@ -611,12 +524,6 @@ CONTAINS
                     SWG1, SWG2, SWG3, SWG4, SWG5, SWG6, SWG7, SWG8)
     !
     RETURN
-    !
-    ! Formats
-    !
-#ifdef W3_T
-9000 FORMAT (' TEST INSNL1 : IMOD :',I4)
-#endif
     !/
     !/ End of INSNL1 ----------------------------------------------------- /
     !/

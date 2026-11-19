@@ -33,17 +33,14 @@ MODULE W3SLN1MD
   !
   !  4. Subroutines and functions used :
   !
-  !      Name      Type  Module   Description
-  !     ----------------------------------------------------------------
-  !      STRACE    Subr. W3SERVMD Subroutine tracing.
-  !     ----------------------------------------------------------------
+  !     None.
   !
   !  5. Remarks :
   !
   !  6. Switches :
   !
-  !     !/S  Enable subroutine tracing.
-  !     !/T  Test output.
+  !     None. The tracing and test output switches (S, T) of the WW3
+  !     Fortran version are not supported.
   !
   !  7. Source code :
   !/
@@ -103,10 +100,7 @@ CONTAINS
     !
     !  4. Subroutines used :
     !
-    !      Name      Type  Module   Description
-    !     ----------------------------------------------------------------
-    !      STRACE    Subr. W3SERVMD Subroutine tracing.
-    !     ----------------------------------------------------------------
+    !     None.
     !
     !  5. Called by :
     !
@@ -132,18 +126,14 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     !/S  Enable subroutine tracing.
-    !     !/T  Test output.
+    !     None. The tracing and test output switches (S, T) of the WW3
+    !     Fortran version are not supported.
     !
     ! 10. Source code :
     !
     !/ ------------------------------------------------------------------- /
-    USE CONSTANTS, ONLY: GRAV, RADE
+    USE CONSTANTS, ONLY: GRAV
     USE W3GDATMD, ONLY: NTH, NK, ECOS, ESIN, SIG, SLNC1, FSPM, FSHF
-    USE W3ODATMD, ONLY: NDSE, NDST
-#ifdef W3_S
-    USE W3SERVMD, ONLY: STRACE
-#endif
     USE, INTRINSIC :: ISO_C_BINDING
     !/
     IMPLICIT NONE
@@ -165,25 +155,10 @@ CONTAINS
     REAL, INTENT(OUT)       :: S(NTH,NK)
     !/
     !/ ------------------------------------------------------------------- /
-    !/ Local parameters
-    !/
-#ifdef W3_S
-    INTEGER, SAVE           :: IENT = 0
-#endif
-    !/
     !/ ------------------------------------------------------------------- /
     !/
-#ifdef W3_S
-    CALL STRACE (IENT, 'W3SLN1')
-#endif
     !
-    ! 1.  Set up factors ------------------------------------------------- *
-    !
-#ifdef W3_T
-    WRITE (NDST,900) USTAR, USDIR*RADE
-#endif
-    !
-    ! 2.  Compute source term via C++ ------------------------------------- *
+    ! 1.  Compute source term via C++ ------------------------------------- *
     !
     ! SIG(1:NK) is passed as SIG is dimensioned 0:NK+1.
     !
@@ -192,12 +167,6 @@ CONTAINS
                     REAL(SLNC1, C_FLOAT), REAL(FSPM, C_FLOAT), REAL(FSHF, C_FLOAT), REAL(GRAV, C_FLOAT))
     !
     RETURN
-    !
-    ! Formats
-    !
-#ifdef W3_T
-900 FORMAT ( ' TEST W3SLN1 : USTAR, DIR :',F6.3, F6.1)
-#endif
     !/
     !/ End of W3SLN1 ----------------------------------------------------- /
     !/

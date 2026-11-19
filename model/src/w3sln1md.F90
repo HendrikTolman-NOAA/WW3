@@ -39,8 +39,7 @@ MODULE W3SLN1MD
   !
   !  6. Switches :
   !
-  !     None. The tracing and test output switches (S, T) of the WW3
-  !     Fortran version are not supported.
+  !     None.
   !
   !  7. Source code :
   !/
@@ -126,8 +125,7 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     None. The tracing and test output switches (S, T) of the WW3
-    !     Fortran version are not supported.
+    !     None.
     !
     ! 10. Source code :
     !

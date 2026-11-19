@@ -262,8 +262,7 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     None. The tracing and test output switches (S, T, T0, T1)
-    !     of the WW3 Fortran version are not supported.
+    !     None.
     !
     ! 10. Source code :
     !
@@ -431,8 +430,7 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     None. The tracing and test output switches (S, T) of the WW3
-    !     Fortran version are not supported.
+    !     None.
     !
     ! 10. Source code :
     !

@@ -55,8 +55,7 @@ MODULE W3SRC1MD
   !
   !  6. Switches :
   !
-  !     None. The tracing and test output switches (S, T, T0, T1) of the
-  !     WW3 Fortran version are not supported.
+  !     None.
   !
   !  7. Source code :
   !
@@ -140,8 +139,7 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     None. The tracing and test output switches (S, T) of the WW3
-    !     Fortran version are not supported.
+    !     None.
     !
     ! 10. Source code :
     !
@@ -257,8 +255,7 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     None. The tracing and test output switches (S, T, T0, T1) of
-    !     the WW3 Fortran version are not supported.
+    !     None.
     !
     ! 10. Source code :
     !
@@ -287,7 +284,6 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: IS
     REAL                    :: COSU, SINU
     !/
     !/ ------------------------------------------------------------------- /
@@ -379,8 +375,7 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     None. The tracing and test output switches (S, T, T0, T1) of
-    !     the WW3 Fortran version are not supported.
+    !     None.
     !
     ! 10. Source code :
     !
@@ -408,19 +403,9 @@ CONTAINS
     REAL, INTENT(OUT)       :: S(NSPEC), D(NSPEC)
     !/
     !/ ------------------------------------------------------------------- /
-    !/ Local parameters
-    !/
-    INTEGER                 :: IS
-    REAL                    :: FACTOR
-    !/
-    !/ ------------------------------------------------------------------- /
     !/
     !
-    ! 1.  Common factor
-    !
-    FACTOR = SDSC1 * FMEAN * WNMEAN**3 * EMEAN**2
-    !
-    ! 3.  Source term via C++
+    ! 1.  Source term via C++
     !
     CALL W3SDS1_CPP(A, K, EMEAN, FMEAN, WNMEAN, S, D, INT(NSPEC, C_INT), REAL(SDSC1, C_FLOAT))
     !

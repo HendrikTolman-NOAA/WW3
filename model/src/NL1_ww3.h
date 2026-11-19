@@ -86,13 +86,7 @@ namespace ww4_nl1 {
 /**
  * @brief Computes the NL1 nonlinear wave-wave interaction source term (W3SNL1).
  * @details Discrete Interaction Approximation (DIA) of Hasselmann et al.
- * (1985), see file description. Calculates the nonlinear interactions and the
- * diagonal term of their derivative in four steps: the proportionality
- * constant including the shallow water factor, the auxiliary spectrum
- * F(f_r,theta) with tail and empty low frequency bins, the interactions for
- * the extended spectrum, and the source and diagonal terms obtained by
- * folding the interactions back to the discrete spectrum. The order of
- * operations matches the Fortran original so results are reproducible.
+ * (1985), see file description.
  * @param[in] action_density Wave action density spectrum N(k,theta) in 1-D
  * (flattened) form (size nspec = nth * nk), see file description.
  * @param[in] group_velocity Group velocity c_g of each frequency band (size
@@ -250,18 +244,8 @@ namespace ww4_nl1 {
  * term (SWG7).
  * @param[in] squared_weight_8 Squared interpolation weight 8 for the diagonal
  * term (SWG8).
- * @pre action_density, source_term and source_diagonal have size nspec =
- * nth * nk, group_velocity and radian_frequency have size nk > 0, the plus
- * and minus address arrays and frequency_scaling have size nspecx, the fold
- * address arrays have size nspec, and num_auxiliary_bins =
- * num_extended_frequencies * nth. All addresses are valid for the auxiliary
- * arrays (1 - nth to num_auxiliary_bins, and 1 - nth to nspecx for the
- * interaction arrays).
- * @post The arrays source_term and source_diagonal are populated with the
- * calculated nonlinear interaction source term and diagonal term.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
- * @author Code Heritage: Converted from WW3 W3SNL1 by Hendrik L. Tolman.
  * @date Initial: 2026-08-14
  * @date Last update: 2026-11-19
  */
@@ -318,12 +302,8 @@ void compute_w3snl1(
 // --- compute_insnl1_ranges --------------------------------------------------
 /**
  * @brief Computes the array sizes for the NL1 interaction tables (INSNL1).
- * @details First part of the NL1 initialization INSNL1. Determines the
- * frequency indices of the quadruplet components at (1 + lambda) f_r and
- * (1 - lambda) f_r, and from these the number of frequency bands of the
- * extended auxiliary spectrum and of the interaction arrays, so that the
- * arrays can be allocated before compute_insnl1 fills them. Uses the same
- * calculation as compute_insnl1, so both give identical sizes.
+ * @details First part of the NL1 initialization INSNL1. Computes the array
+ * sizes needed before compute_insnl1 fills the tables.
  * @param[in] num_frequencies Number of frequency bands nk (NK).
  * @param[in] num_directions Number of directions nth.
  * @param[in] frequency_ratio Ratio of successive relative frequencies (XFR).
@@ -336,12 +316,8 @@ void compute_w3snl1(
  * spectrum (NSPECY = NFRHGH * nth).
  * @param[out] num_interaction_bins Number of bins of the interaction arrays
  * (NSPECX = NFRCHG * nth).
- * @pre num_frequencies > 0, num_directions > 0, frequency_ratio > 1 and
- * 0 < quadruplet_lambda < 1.
- * @post The four output sizes are set.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
- * @author Code Heritage: Converted from WW3 INSNL1 by Hendrik L. Tolman.
  * @date Initial: 2026-11-19
  * @date Last update: 2026-11-19
  */
@@ -356,19 +332,8 @@ void compute_insnl1_ranges(std::size_t num_frequencies,
 // --- compute_insnl1 ---------------------------------------------------------
 /**
  * @brief Computes the NL1 interaction tables and weights (INSNL1).
- * @details Preprocessing for the Discrete Interaction Approximation (DIA)
- * used by compute_w3snl1, see file description. Calculates (1) the internal
- * angles delta_theta,2 and delta_theta,3 of the two mirror-image quadruplets
- * and the lambda dependent weights, (2) the directional and (3) the frequency
- * indices and weights of the interacting components, (4) the 32 address
- * arrays that make the interaction loops of compute_w3snl1 simple vector loops
- * and take care of the closed directional space, (5) the scaling array
- * f_r^11 and (6) the interpolation weights and their squares. The relative
- * frequency indices are replaced by complete addresses 1 ... nspecx (or
- * nspec) into the 1-D (flattened) spectra with address = ith + nth * (ifr - 1)
- * (1-based), where addresses 1 - nth to 0 refer to the empty bins at low
- * frequencies. The order of operations, including the integer powers, matches
- * the Fortran original so results are reproducible.
+ * @details Preprocessing for the Discrete Interaction Approximation (DIA) used
+ * by compute_w3snl1, see file description.
  * @param[in] radian_frequency Radian frequency sigma of each frequency band
  * (size nk).
  * @param[in] num_directions Number of directions nth.
@@ -496,13 +461,8 @@ void compute_insnl1_ranges(std::size_t num_frequencies,
  * @param[out] squared_weight_6 Output: squared interpolation weight 6 (SWG6).
  * @param[out] squared_weight_7 Output: squared interpolation weight 7 (SWG7).
  * @param[out] squared_weight_8 Output: squared interpolation weight 8 (SWG8).
- * @pre radian_frequency has size nk > 0, the plus and minus address arrays
- * and frequency_scaling have size nspecx = nfrchg * nth, and the fold address
- * arrays have size nspec = nth * nk, with nfrchg from compute_insnl1_ranges.
- * @post All output arrays and weights are set.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
- * @author Code Heritage: Converted from WW3 INSNL1 by Hendrik L. Tolman.
  * @date Initial: 2026-11-19
  * @date Last update: 2026-11-19
  */
@@ -650,7 +610,6 @@ extern "C" {
  * @param[in] swg6 Squared interpolation weight 6.
  * @param[in] swg7 Squared interpolation weight 7.
  * @param[in] swg8 Squared interpolation weight 8.
- * @pre nk > 0 and all arrays are allocated with the sizes given above.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
  * @date Initial: 2026-08-14
@@ -689,7 +648,6 @@ void w3snl1_cpp(const float *a, const float *cg, float kdmean, float *s,
  * @param[out] nfrchg Number of frequency bands of the interactions.
  * @param[out] nspecy Size of the extended auxiliary spectrum.
  * @param[out] nspecx Size of the interaction arrays.
- * @pre nk > 0, nth > 0.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-19
@@ -796,7 +754,6 @@ void insnl1_ranges_cpp(int nk, int nth, float xfr, float lam, int *nfrhgh,
  * @param[out] swg6 Output: squared interpolation weight 6.
  * @param[out] swg7 Output: squared interpolation weight 7.
  * @param[out] swg8 Output: squared interpolation weight 8.
- * @pre nk > 0 and all arrays are allocated with the sizes given above.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-19

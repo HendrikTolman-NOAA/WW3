@@ -49,19 +49,14 @@ MODULE W3SRC1MD
   !
   !  4. Subroutines and functions used :
   !
-  !      Name      Type  Module   Description
-  !     ----------------------------------------------------------------
-  !      STRACE    Subr. W3SERVMD Subroutine tracing.            ( !/S )
-  !      PRT2DS    Subr. W3ARRYMD Print plot of spectra.        ( !/T0 )
-  !      OUTMAT    Subr. W3WRRYMD Print out 2D matrix.          ( !/T1 )
-  !     ----------------------------------------------------------------
+  !     None.
   !
   !  5. Remarks :
   !
   !  6. Switches :
   !
-  !       !/S      Enable subroutine tracing.
-  !       !/T(n)   Test output, see subroutines.
+  !     None. The tracing and test output switches (S, T, T0, T1) of the
+  !     WW3 Fortran version are not supported.
   !
   !  7. Source code :
   !
@@ -122,10 +117,7 @@ CONTAINS
     !
     !  4. Subroutines used :
     !
-    !      Name      Type  Module   Description
-    !     ----------------------------------------------------------------
-    !      STRACE    Subr. W3SERVMD Subroutine tracing.
-    !     ----------------------------------------------------------------
+    !     None.
     !
     !  5. Called by :
     !
@@ -148,21 +140,15 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     !/S  Enable subroutine tracing.
-    !     !/T  Enable test output.
+    !     None. The tracing and test output switches (S, T) of the WW3
+    !     Fortran version are not supported.
     !
     ! 10. Source code :
     !
     !/ ------------------------------------------------------------------- /
-    USE CONSTANTS
+    USE CONSTANTS, ONLY: TPIINV
     USE W3GDATMD, ONLY: NK, NTH, SIG, DDEN, FTE, FTF, FTWN
     USE, INTRINSIC :: ISO_C_BINDING
-#ifdef W3_T
-    USE W3ODATMD, ONLY: NDST
-#endif
-#ifdef W3_S
-    USE W3SERVMD, ONLY: STRACE
-#endif
     !
     IMPLICIT NONE
     !
@@ -184,17 +170,8 @@ CONTAINS
     REAL, INTENT(OUT)       :: EMEAN, FMEAN, WNMEAN, AMAX
     !/
     !/ ------------------------------------------------------------------- /
-    !/ Local parameters
-    !/
-#ifdef W3_S
-    INTEGER, SAVE           :: IENT = 0
-#endif
-    !/
     !/ ------------------------------------------------------------------- /
     !/
-#ifdef W3_S
-    CALL STRACE (IENT, 'W3SPR1')
-#endif
     !
     ! Mean parameters via C++ ( integrals over spectrum and tail,
     ! SIG(1:NK) passed as SIG is dimensioned 0:NK+1 )
@@ -203,17 +180,7 @@ CONTAINS
          REAL(FTE, C_FLOAT), REAL(FTF, C_FLOAT), REAL(FTWN, C_FLOAT),            &
          REAL(TPIINV, C_FLOAT), EMEAN, FMEAN, WNMEAN, AMAX)
     !
-#ifdef W3_T
-    WRITE (NDST,9000) EMEAN, FMEAN, WNMEAN
-#endif
-    !
     RETURN
-    !
-    ! Formats
-    !
-#ifdef W3_T
-9000 FORMAT (' TEST W3SPR1 : E,F,WN MEAN ',3E10.3)
-#endif
     !/
     !/ End of W3SPR1 ----------------------------------------------------- /
     !/
@@ -269,12 +236,7 @@ CONTAINS
     !
     !  4. Subroutines used :
     !
-    !      Name      Type  Module   Description
-    !     ----------------------------------------------------------------
-    !      STRACE    Subr. W3SERVMD Subroutine tracing.
-    !      PRT2DS    Subr. W3SRRYMD Print plot of spectrum.
-    !      OUTMAT    Subr. W3SRRYMD Print out matrix.
-    !     ----------------------------------------------------------------
+    !     None.
     !
     !  5. Called by :
     !
@@ -295,30 +257,13 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     !/S   Enable subroutine tracing.
-    !     !/T   Enable general test output.
-    !     !/T0  2-D print plot of source term.
-    !     !/T1  Print arrays.
+    !     None. The tracing and test output switches (S, T, T0, T1) of
+    !     the WW3 Fortran version are not supported.
     !
     ! 10. Source code :
     !
     !/ ------------------------------------------------------------------- /
-#ifdef W3_T
-    USE CONSTANTS
-#endif
-    USE W3GDATMD, ONLY: NK, NTH, NSPEC, SIG, SIG2, ESIN, ECOS, SINC1
-#ifdef W3_T
-    USE W3ODATMD, ONLY: NDST
-#endif
-#ifdef W3_S
-    USE W3SERVMD, ONLY: STRACE
-#endif
-#ifdef W3_T0
-    USE W3ARRYMD, ONLY: PRT2DS
-#endif
-#ifdef W3_T1
-    USE W3ARRYMD, ONLY: OUTMAT
-#endif
+    USE W3GDATMD, ONLY: NSPEC, SIG2, ESIN, ECOS, SINC1
     USE, INTRINSIC :: ISO_C_BINDING
     !
     IMPLICIT NONE
@@ -343,26 +288,10 @@ CONTAINS
     !/ Local parameters
     !/
     INTEGER                 :: IS
-#ifdef W3_S
-    INTEGER, SAVE           :: IENT = 0
-#endif
-#ifdef W3_T0
-    INTEGER                 :: IK, ITH
-#endif
     REAL                    :: COSU, SINU
-#ifdef W3_T0
-    REAL                    :: DOUT(NK,NTH)
-#endif
     !/
     !/ ------------------------------------------------------------------- /
     !/
-#ifdef W3_S
-    CALL STRACE (IENT, 'W3SIN1')
-#endif
-    !
-#ifdef W3_T
-    WRITE (NDST,9000) SINC1, USTAR, USDIR*RADE
-#endif
     !
     ! 1.  Preparations
     !
@@ -373,29 +302,7 @@ CONTAINS
     !
     CALL W3SIN1_CPP(A, K, USTAR, COSU, SINU, S, D, INT(NSPEC, C_INT), REAL(SINC1, C_FLOAT), SIG2, ECOS, ESIN)
     !
-    ! ... Test output of arrays
-    !
-#ifdef W3_T0
-    DO IK=1, NK
-      DO ITH=1, NTH
-        DOUT(IK,ITH) = D(ITH+(IK-1)*NTH)
-      END DO
-    END DO
-    CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1:), '  ', 1.,    &
-         0.0, 0.001, 'Diag Sin', ' ', 'NONAME')
-#endif
-    !
-#ifdef W3_T1
-    CALL OUTMAT (NDST, D, NTH, NTH, NK, 'diag Sin')
-#endif
-    !
     RETURN
-    !
-    ! Formats
-    !
-#ifdef W3_T
-9000 FORMAT (' TEST W3SIN1 : COMMON FACT.: ',3E10.3)
-#endif
     !/
     !/ End of W3SIN1 ----------------------------------------------------- /
     !/
@@ -451,12 +358,7 @@ CONTAINS
     !
     !  4. Subroutines used :
     !
-    !      Name      Type  Module   Description
-    !     ----------------------------------------------------------------
-    !      STRACE    Subr. W3SERVMD Subroutine tracing.
-    !      PRT2DS    Subr. W3SRRYMD Print plot of spectrum.
-    !      OUTMAT    Subr. W3SRRYMD Print out matrix.
-    !     ----------------------------------------------------------------
+    !     None.
     !
     !  5. Called by :
     !
@@ -477,27 +379,13 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     !/S   Enable subroutine tracing.
-    !     !/T   Enable general test output.
-    !     !/T0  2-D print plot of source term.
-    !     !/T1  Print arrays.
+    !     None. The tracing and test output switches (S, T, T0, T1) of
+    !     the WW3 Fortran version are not supported.
     !
     ! 10. Source code :
     !
     !/ ------------------------------------------------------------------- /
-    USE W3GDATMD, ONLY: NK, NTH, NSPEC, SIG, SDSC1
-#ifdef W3_T
-    USE W3ODATMD, ONLY: NDST
-#endif
-#ifdef W3_S
-    USE W3SERVMD, ONLY: STRACE
-#endif
-#ifdef W3_T0
-    USE W3ARRYMD, ONLY: PRT2DS
-#endif
-#ifdef W3_T1
-    USE W3ARRYMD, ONLY: OUTMAT
-#endif
+    USE W3GDATMD, ONLY: NSPEC, SDSC1
     USE, INTRINSIC :: ISO_C_BINDING
     !
     IMPLICIT NONE
@@ -523,58 +411,20 @@ CONTAINS
     !/ Local parameters
     !/
     INTEGER                 :: IS
-#ifdef W3_S
-    INTEGER, SAVE           :: IENT = 0
-#endif
-#ifdef W3_T0
-    INTEGER                 :: IK, ITH
-#endif
     REAL                    :: FACTOR
-#ifdef W3_T0
-    REAL                    :: DOUT(NK,NTH)
-#endif
     !/
     !/ ------------------------------------------------------------------- /
     !/
-#ifdef W3_S
-    CALL STRACE (IENT, 'W3SDS1')
-#endif
     !
     ! 1.  Common factor
     !
     FACTOR = SDSC1 * FMEAN * WNMEAN**3 * EMEAN**2
     !
-#ifdef W3_T
-    WRITE (NDST,9000) SDSC1, FMEAN, WNMEAN, EMEAN, FACTOR
-#endif
-    !
     ! 3.  Source term via C++
     !
     CALL W3SDS1_CPP(A, K, EMEAN, FMEAN, WNMEAN, S, D, INT(NSPEC, C_INT), REAL(SDSC1, C_FLOAT))
     !
-    ! ... Test output of arrays
-    !
-#ifdef W3_T0
-    DO IK=1, NK
-      DO ITH=1, NTH
-        DOUT(IK,ITH) = D(ITH+(IK-1)*NTH)
-      END DO
-    END DO
-    CALL PRT2DS (NDST, NK, NK, NTH, DOUT, SIG(1:), '  ', 1.,    &
-         0.0, 0.001, 'Diag Sds', ' ', 'NONAME')
-#endif
-    !
-#ifdef W3_T1
-    CALL OUTMAT (NDST, D, NTH, NTH, NK, 'diag Sds')
-#endif
-    !
     RETURN
-    !
-    ! Formats
-    !
-#ifdef W3_T
-9000 FORMAT (' TEST W3SDS1 : COMMON FACT.: ',5E10.3)
-#endif
     !/
     !/ End of W3SDS1 ----------------------------------------------------- /
     !/

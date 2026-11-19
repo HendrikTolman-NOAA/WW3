@@ -9,12 +9,21 @@
  * @details Pure C++20 implementations of the ST1 mean wave parameters (W3SPR1),
  * wind input (W3SIN1) and whitecapping dissipation (W3SDS1) for one spatial
  * point, with C-compatible interfaces called from the WAVEWATCH III (WW3)
- * Fortran module w3src1md.F90. Starting point of the WW4 conversion of the
- * ST1 source terms. The input spectrum (wave action density
- * N(k,theta)) and the journal references are described in ST1_ww3.h. Each
- * routine has its full documentation (details, contracts and heritage) in
- * front of its definition, and a shorter version with its declaration in
- * ST1_ww3.h.
+ * Fortran module w3src1md.F90. Starting point of the WW4 conversion of the ST1
+ * source terms. The input spectrum (wave action density N(k,theta)) is
+ * described in ST1_ww3.h. Each routine has its full documentation (details,
+ * contracts and heritage) in front of its definition, and a shorter version
+ * with its declaration in ST1_ww3.h.
+ *
+ * References:
+ * - Snyder, R. L., F. W. Dobson, J. A. Elliott and R. B. Long, 1981: Array
+ *   measurements of atmospheric pressure fluctuations above surface gravity
+ *   waves. J. Fluid Mech., 102, 1-59.
+ * - Komen, G. J., S. Hasselmann and K. Hasselmann, 1984: On the existence of
+ *   a fully developed wind-sea spectrum. J. Phys. Oceanogr., 14, 1271-1285.
+ * - The WAMDI Group, 1988: The WAM model - A third generation ocean wave
+ *   prediction model. J. Phys. Oceanogr., 18, 1775-1810.
+ * - WAVEWATCH III Development Group, WAVEWATCH III user manual, section ST1.
  *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National

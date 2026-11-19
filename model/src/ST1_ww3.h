@@ -22,16 +22,6 @@
  * order A(ith, ik), so that the 1-D (flattened) index of direction ith and
  * wavenumber ik (both 0-based) is is = ith + nth * ik.
  *
- * References:
- * - Snyder, R. L., F. W. Dobson, J. A. Elliott and R. B. Long, 1981: Array
- *   measurements of atmospheric pressure fluctuations above surface gravity
- *   waves. J. Fluid Mech., 102, 1-59.
- * - Komen, G. J., S. Hasselmann and K. Hasselmann, 1984: On the existence of
- *   a fully developed wind-sea spectrum. J. Phys. Oceanogr., 14, 1271-1285.
- * - The WAMDI Group, 1988: The WAM model - A third generation ocean wave
- *   prediction model. J. Phys. Oceanogr., 18, 1775-1810.
- * - WAVEWATCH III Development Group, WAVEWATCH III user manual, section ST1.
- *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
  * Weather Service.

@@ -34,14 +34,6 @@
  * order S(ith, ik), so that the 1-D (flattened) index of direction ith and
  * wavenumber ik (both 0-based) is is = ith + nth * ik.
  *
- * References:
- * - Cavaleri, L. and P. Malanotte-Rizzoli, 1981: Wind-wave prediction in
- *   shallow water: Theory and applications. J. Geophys. Res., 86,
- *   10961-10973.
- * - Tolman, H. L., 1992: Effects of numerics on the physics in a
- *   third-generation wind-wave model. J. Phys. Oceanogr., 22, 1095-1111.
- * - WAVEWATCH III Development Group, WAVEWATCH III user manual, section LN1.
- *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
  * Weather Service.

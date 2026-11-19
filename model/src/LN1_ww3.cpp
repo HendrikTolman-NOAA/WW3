@@ -7,13 +7,20 @@
  * @brief Implementation of the single-point linear wind input (LN1) source
  * term routine for WAVEWATCH IV (WW4).
  * @details Pure C++20 implementation of the LN1 linear wind input source term
- * (W3SLN1) for one spatial point, with a C-compatible interface called from
- * the WAVEWATCH III (WW3) Fortran module w3sln1md.F90. Starting point of the
- * WW4 conversion of the LN1 source term. The output spectrum (wave action
- * density source term S(k,theta)) and the journal references are described in
- * LN1_ww3.h. Each routine has its full documentation (details, contracts and
- * heritage) in front of its definition, and a shorter version with its
- * declaration in LN1_ww3.h.
+ * (W3SLN1) for one spatial point, with a C-compatible interface called from the
+ * WAVEWATCH III (WW3) Fortran module w3sln1md.F90. Starting point of the WW4
+ * conversion of the LN1 source term. The output spectrum (wave action density
+ * source term S(k,theta)) is described in LN1_ww3.h. Each routine has its full
+ * documentation (details, contracts and heritage) in front of its definition,
+ * and a shorter version with its declaration in LN1_ww3.h.
+ *
+ * References:
+ * - Cavaleri, L. and P. Malanotte-Rizzoli, 1981: Wind-wave prediction in
+ *   shallow water: Theory and applications. J. Geophys. Res., 86,
+ *   10961-10973.
+ * - Tolman, H. L., 1992: Effects of numerics on the physics in a
+ *   third-generation wind-wave model. J. Phys. Oceanogr., 22, 1095-1111.
+ * - WAVEWATCH III Development Group, WAVEWATCH III user manual, section LN1.
  *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National

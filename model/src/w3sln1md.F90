@@ -123,6 +123,9 @@ CONTAINS
     !
     !  7. Remarks :
     !
+    !     The source term is computed by the C++ routine W3SLN1_CPP
+    !     (LN1_ww3.cpp, declared in LN1_ww3.h).
+    !
     !  8. Structure :
     !
     !     See source code.
@@ -182,8 +185,10 @@ CONTAINS
     !
     ! 2.  Compute source term via C++ ------------------------------------- *
     !
+    ! SIG(1:NK) is passed as SIG is dimensioned 0:NK+1.
+    !
     CALL W3SLN1_CPP(K, REAL(FHIGH, C_FLOAT), REAL(USTAR, C_FLOAT), REAL(USDIR, C_FLOAT), S, &
-                    INT(NTH, C_INT), INT(NK, C_INT), ECOS, ESIN, SIG, &
+                    INT(NTH, C_INT), INT(NK, C_INT), ECOS, ESIN, SIG(1:NK), &
                     REAL(SLNC1, C_FLOAT), REAL(FSPM, C_FLOAT), REAL(FSHF, C_FLOAT), REAL(GRAV, C_FLOAT))
     !
     RETURN

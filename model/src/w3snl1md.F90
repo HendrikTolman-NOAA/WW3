@@ -248,7 +248,9 @@ CONTAINS
     !
     !  7. Remarks :
     !
-    !       None.
+    !     The source term and its diagonal are computed by the C++ routine
+    !     W3SNL1_CPP (NL1_ww3.cpp, declared in NL1_ww3.h), which carries out
+    !     the steps listed in section 8.
     !
     !  8. Structure :
     !
@@ -261,6 +263,7 @@ CONTAINS
     !        c Fold interactions to side angles
     !      4.  Put source and diagonal term together
     !     -------------------------------------------
+    !     Steps 1-4 are carried out in C++.
     !
     !  9. Switches :
     !
@@ -276,7 +279,7 @@ CONTAINS
     USE CONSTANTS
     USE W3GDATMD, ONLY: NK, NTH, NSPEC, SIG, FACHFE,                &
          KDCON, KDMN, SNLC1, SNLS1, SNLS2, SNLS3
-    USE W3ADATMD, ONLY: NFR, NFRHGH, NSPECX, NSPECY,        &
+    USE W3ADATMD, ONLY: NFRHGH, NSPECX, NSPECY,                  &
          IP11, IP12, IP13, IP14, IM11, IM12, IM13, IM14,   &
          IP21, IP22, IP23, IP24, IM21, IM22, IM23, IM24,   &
          IC11, IC12, IC21, IC22, IC31, IC32, IC41, IC42,   &
@@ -284,6 +287,9 @@ CONTAINS
          DAL1, DAL2, DAL3, AF11,                           &
          AWG1, AWG2, AWG3, AWG4, AWG5, AWG6, AWG7, AWG8,   &
          SWG1, SWG2, SWG3, SWG4, SWG5, SWG6, SWG7, SWG8
+#ifdef W3_T0
+    USE W3ADATMD, ONLY: NFR
+#endif
 #ifdef W3_T
     USE W3ODATMD, ONLY: NDST
 #endif
@@ -305,7 +311,7 @@ CONTAINS
     !
     INTERFACE
       SUBROUTINE W3SNL1_CPP(A, CG, KDMEAN, S, D, NK, NTH, NSPEC, NFRHGH, NSPECX, NSPECY, &
-                            SIG, FACHFE, SNLC1, SNLS1, SNLS2, SNLS3, KDCON, KDMN, &
+                            SIG, FACHFE, SNLC1, SNLS1, SNLS2, SNLS3, KDCON, KDMN, TPIINV, &
                             IP11, IP12, IP13, IP14, IM11, IM12, IM13, IM14, &
                             IP21, IP22, IP23, IP24, IM21, IM22, IM23, IM24, &
                             IC11, IC12, IC21, IC22, IC31, IC32, IC41, IC42, &
@@ -315,7 +321,7 @@ CONTAINS
                             SWG1, SWG2, SWG3, SWG4, SWG5, SWG6, SWG7, SWG8) BIND(C, name="w3snl1_cpp")
         USE, INTRINSIC :: ISO_C_BINDING
         INTEGER(C_INT), VALUE, INTENT(IN) :: NK, NTH, NSPEC, NFRHGH, NSPECX, NSPECY
-        REAL(C_FLOAT), VALUE, INTENT(IN) :: KDMEAN, FACHFE, SNLC1, SNLS1, SNLS2, SNLS3, KDCON, KDMN
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: KDMEAN, FACHFE, SNLC1, SNLS1, SNLS2, SNLS3, KDCON, KDMN, TPIINV
         REAL(C_FLOAT), VALUE, INTENT(IN) :: DAL1, DAL2, DAL3
         REAL(C_FLOAT), VALUE, INTENT(IN) :: AWG1, AWG2, AWG3, AWG4, AWG5, AWG6, AWG7, AWG8
         REAL(C_FLOAT), VALUE, INTENT(IN) :: SWG1, SWG2, SWG3, SWG4, SWG5, SWG6, SWG7, SWG8
@@ -341,21 +347,13 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: ITH, IFR, ISP
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
-    REAL                    :: X, X2, CONS, CONX, FACTOR,           &
-         E00, EP1, EM1, EP2, EM2,             &
-         SA1A, SA1B, SA2A, SA2B
 #ifdef W3_T0
+    INTEGER                 :: ITH, IFR, ISP
     REAL                    :: SOUT(NK,NFR), DOUT(NK,NFR)
 #endif
-    REAL               ::  UE  (1-NTH:NSPECY), SA1 (1-NTH:NSPECX),  &
-         SA2 (1-NTH:NSPECX), DA1C(1-NTH:NSPECX),  &
-         DA1P(1-NTH:NSPECX), DA1M(1-NTH:NSPECX),  &
-         DA2C(1-NTH:NSPECX), DA2P(1-NTH:NSPECX),  &
-         DA2M(1-NTH:NSPECX), CON (      NSPEC )
     !/
     !/ ------------------------------------------------------------------- /
     !/
@@ -366,21 +364,23 @@ CONTAINS
 #endif
     !
     !
-    ! Call C++ implementation of W3SNL1
+#ifdef W3_T
+    WRITE (NDST,9000) KDMEAN
+#endif
+    !
+    ! 1.-4. Source and diagonal terms via C++ ----------------------------- *
+    !
+    ! SIG(1:NK) is passed as SIG is dimensioned 0:NK+1.
     !
     CALL W3SNL1_CPP(A, CG, REAL(KDMEAN, C_FLOAT), S, D, INT(NK, C_INT), INT(NTH, C_INT), &
                     INT(NSPEC, C_INT), INT(NFRHGH, C_INT), INT(NSPECX, C_INT), INT(NSPECY, C_INT), &
-                    SIG, REAL(FACHFE, C_FLOAT), REAL(SNLC1, C_FLOAT), REAL(SNLS1, C_FLOAT), &
+                    SIG(1:NK), REAL(FACHFE, C_FLOAT), REAL(SNLC1, C_FLOAT), REAL(SNLS1, C_FLOAT), &
                     REAL(SNLS2, C_FLOAT), REAL(SNLS3, C_FLOAT), REAL(KDCON, C_FLOAT), &
-                    REAL(KDMN, C_FLOAT), &
-                    INT(IP11, C_INT), INT(IP12, C_INT), INT(IP13, C_INT), INT(IP14, C_INT), &
-                    INT(IM11, C_INT), INT(IM12, C_INT), INT(IM13, C_INT), INT(IM14, C_INT), &
-                    INT(IP21, C_INT), INT(IP22, C_INT), INT(IP23, C_INT), INT(IP24, C_INT), &
-                    INT(IM21, C_INT), INT(IM22, C_INT), INT(IM23, C_INT), INT(IM24, C_INT), &
-                    INT(IC11, C_INT), INT(IC12, C_INT), INT(IC21, C_INT), INT(IC22, C_INT), &
-                    INT(IC31, C_INT), INT(IC32, C_INT), INT(IC41, C_INT), INT(IC42, C_INT), &
-                    INT(IC51, C_INT), INT(IC52, C_INT), INT(IC61, C_INT), INT(IC62, C_INT), &
-                    INT(IC71, C_INT), INT(IC72, C_INT), INT(IC81, C_INT), INT(IC82, C_INT), &
+                    REAL(KDMN, C_FLOAT), REAL(TPIINV, C_FLOAT), &
+                    IP11, IP12, IP13, IP14, IM11, IM12, IM13, IM14, &
+                    IP21, IP22, IP23, IP24, IM21, IM22, IM23, IM24, &
+                    IC11, IC12, IC21, IC22, IC31, IC32, IC41, IC42, &
+                    IC51, IC52, IC61, IC62, IC71, IC72, IC81, IC82, &
                     REAL(DAL1, C_FLOAT), REAL(DAL2, C_FLOAT), REAL(DAL3, C_FLOAT), AF11, &
                     REAL(AWG1, C_FLOAT), REAL(AWG2, C_FLOAT), REAL(AWG3, C_FLOAT), REAL(AWG4, C_FLOAT), &
                     REAL(AWG5, C_FLOAT), REAL(AWG6, C_FLOAT), REAL(AWG7, C_FLOAT), REAL(AWG8, C_FLOAT), &
@@ -413,7 +413,7 @@ CONTAINS
     ! Formats
     !
 #ifdef W3_T
-9000 FORMAT (' TEST W3SNL1 : KDMEAN, CONS :',F8.2,F8.1)
+9000 FORMAT (' TEST W3SNL1 : KDMEAN :',F8.2)
 #endif
     !/
     !/ End of W3SNL1 ----------------------------------------------------- /

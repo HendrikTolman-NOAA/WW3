@@ -69,11 +69,8 @@ namespace ww4_ln1 {
 // --- compute_w3sln1 ---------------------------------------------------------
 /**
  * @brief Computes the LN1 linear wind input source term (W3SLN1).
- * @details Linear wind input of Cavaleri and Malanotte-Rizzoli (1981) filtered
- * for low frequencies as in Tolman (1992), see file description. The source
- * term is the product of a directional factor max[0, cos(theta - theta_w)]^4
- * and a frequency dependent factor C_ln u_*^4 k^-1 G. The order of operations
- * matches the Fortran original so results are reproducible.
+ * @details Linear wind input of Cavaleri and Malanotte-Rizzoli (1981) with the
+ * low-frequency filter of Tolman (1992), see file description.
  * @param[in] wavenumber Wavenumber k of each frequency band (size nk).
  * @param[in] cutoff_frequency Cut-off frequency sigma_hf in the integration
  * (rad/s) (FHIGH).
@@ -95,14 +92,8 @@ namespace ww4_ln1 {
  * @param[in] high_frequency_factor Factor alpha_hf on the cut-off frequency in
  * the filter frequency (FSHF).
  * @param[in] gravity Acceleration of gravity g.
- * @pre wavenumber and radian_frequency have the same size nk > 0,
- * cos_direction and sin_direction have size nth = num_directions, and
- * source_term has size nth * nk.
- * @post The array source_term is populated with the calculated linear input
- * source term.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
- * @author Code Heritage: Converted from WW3 W3SLN1 by Hendrik L. Tolman.
  * @date Initial: 2026-08-14
  * @date Last update: 2026-11-19
  */
@@ -141,7 +132,6 @@ extern "C" {
  * @param[in] fspm Factor on the Pierson-Moskowitz frequency in the filter.
  * @param[in] fshf Factor on the cut-off frequency in the filter.
  * @param[in] grav Acceleration of gravity.
- * @pre nk > 0 and all arrays are allocated with the sizes given above.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
  * @date Initial: 2026-08-14

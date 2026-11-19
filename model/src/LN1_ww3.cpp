@@ -9,9 +9,11 @@
  * @details Pure C++20 implementation of the LN1 linear wind input source term
  * (W3SLN1) for one spatial point, with a C-compatible interface called from
  * the WAVEWATCH III (WW3) Fortran module w3sln1md.F90. Starting point of the
- * WW4 conversion of the LN1 source term. The routine, the output spectrum
- * (wave action density source term S(k,theta)) and the journal references are
- * documented in LN1_ww3.h.
+ * WW4 conversion of the LN1 source term. The output spectrum (wave action
+ * density source term S(k,theta)) and the journal references are described in
+ * LN1_ww3.h. Each routine has its full documentation (details, contracts and
+ * heritage) in front of its definition, and a shorter version with its
+ * declaration in LN1_ww3.h.
  *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
@@ -53,7 +55,45 @@ constexpr float kMaxFilterFrequencyRatio = 2.0F;
 constexpr float kMinFrequencyRatio = 0.5F;
 
 // --- compute_w3sln1 ---------------------------------------------------------
-// Documented in LN1_ww3.h.
+/**
+ * @brief Computes the LN1 linear wind input source term (W3SLN1).
+ * @details Linear wind input of Cavaleri and Malanotte-Rizzoli (1981) filtered
+ * for low frequencies as in Tolman (1992), see file description. The source
+ * term is the product of a directional factor max[0, cos(theta - theta_w)]^4
+ * and a frequency dependent factor C_ln u_*^4 k^-1 G. The order of operations
+ * matches the Fortran original so results are reproducible.
+ * @param[in] wavenumber Wavenumber k of each frequency band (size nk).
+ * @param[in] cutoff_frequency Cut-off frequency sigma_hf in the integration
+ * (rad/s) (FHIGH).
+ * @param[in] friction_velocity Wind friction velocity u_*.
+ * @param[in] wind_direction Direction theta_w of the friction velocity
+ * (radians, USDIR).
+ * @param[out] source_term Linear input source term in action density form as
+ * 2-D array S(ith, ik) in Fortran (column-major) order (size nth * nk), see
+ * file description.
+ * @param[in] num_directions Number of directions nth.
+ * @param[in] cos_direction Cosine of each spectral direction (size nth).
+ * @param[in] sin_direction Sine of each spectral direction (size nth).
+ * @param[in] radian_frequency Radian frequency sigma of each frequency band
+ * (size nk).
+ * @param[in] linear_input_coefficient Combined input constant
+ * 80 (rho_a / rho_w)^2 g^-2 (SLNC1).
+ * @param[in] pm_frequency_factor Factor alpha_PM on the Pierson-Moskowitz
+ * frequency in the filter frequency (FSPM).
+ * @param[in] high_frequency_factor Factor alpha_hf on the cut-off frequency in
+ * the filter frequency (FSHF).
+ * @param[in] gravity Acceleration of gravity g.
+ * @pre wavenumber and radian_frequency have the same size nk > 0,
+ * cos_direction and sin_direction have size nth = num_directions, and
+ * source_term has size nth * nk.
+ * @post The array source_term is populated with the calculated linear input
+ * source term.
+ * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
+ * @author Code Heritage: Converted from WW3 W3SLN1 by Hendrik L. Tolman.
+ * @date Initial: 2026-08-14
+ * @date Last update: 2026-11-19
+ */
 void compute_w3sln1(
     const std::span<const float> wavenumber, const float cutoff_frequency,
     const float friction_velocity, const float wind_direction,
@@ -121,7 +161,32 @@ void compute_w3sln1(
 extern "C" {
 
 // --- w3sln1_cpp -------------------------------------------------------------
-// Documented in LN1_ww3.h.
+/**
+ * @brief Fortran interface to ww4_ln1::compute_w3sln1.
+ * @details Wraps the raw Fortran arrays in non-owning spans and forwards to
+ * ww4_ln1::compute_w3sln1. S is the Fortran array S(nth, nk). Bound in
+ * w3sln1md.F90 as BIND(C, name="w3sln1_cpp").
+ * @param[in] K Wavenumbers (size nk).
+ * @param[in] fhigh Cut-off frequency in the integration (rad/s).
+ * @param[in] ustar Wind friction velocity u_*.
+ * @param[in] usdir Direction of the friction velocity (radians).
+ * @param[out] S Linear input source term as 2-D array S(nth, nk) (size
+ * nth * nk).
+ * @param[in] nth Number of directions.
+ * @param[in] nk Number of wavenumbers.
+ * @param[in] ecos Cosine of each spectral direction (size nth).
+ * @param[in] esin Sine of each spectral direction (size nth).
+ * @param[in] sig Radian frequencies (size nk).
+ * @param[in] slnc1 Combined input constant (SLNC1).
+ * @param[in] fspm Factor on the Pierson-Moskowitz frequency in the filter.
+ * @param[in] fshf Factor on the cut-off frequency in the filter.
+ * @param[in] grav Acceleration of gravity.
+ * @pre nk > 0 and all arrays are allocated with the sizes given above.
+ * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Contributors: Jules (Agentic AI), Kiro (Agentic AI/SI)
+ * @date Initial: 2026-08-14
+ * @date Last update: 2026-11-19
+ */
 void w3sln1_cpp(const float *const K, const float fhigh, const float ustar,
                 const float usdir, float *const S, const int nth, const int nk,
                 const float *const ecos, const float *const esin,

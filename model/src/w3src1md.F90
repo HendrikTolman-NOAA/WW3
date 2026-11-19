@@ -156,6 +156,7 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     USE CONSTANTS
     USE W3GDATMD, ONLY: NK, NTH, SIG, DDEN, FTE, FTF, FTWN
+    USE, INTRINSIC :: ISO_C_BINDING
 #ifdef W3_T
     USE W3ODATMD, ONLY: NDST
 #endif
@@ -164,6 +165,17 @@ CONTAINS
 #endif
     !
     IMPLICIT NONE
+    !
+    INTERFACE
+      SUBROUTINE W3SPR1_CPP(A, CG, WN, SIG, DDEN, NTH, NK, FTE, FTF, FTWN, TPIINV, &
+           EMEAN, FMEAN, WNMEAN, AMAX) BIND(C, name="w3spr1_cpp")
+        USE, INTRINSIC :: ISO_C_BINDING
+        INTEGER(C_INT), VALUE, INTENT(IN) :: NTH, NK
+        REAL(C_FLOAT), VALUE, INTENT(IN)  :: FTE, FTF, FTWN, TPIINV
+        REAL(C_FLOAT), INTENT(IN)         :: A(NTH,NK), CG(NK), WN(NK), SIG(NK), DDEN(NK)
+        REAL(C_FLOAT), INTENT(OUT)        :: EMEAN, FMEAN, WNMEAN, AMAX
+      END SUBROUTINE W3SPR1_CPP
+    END INTERFACE
     !/
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
@@ -174,11 +186,9 @@ CONTAINS
     !/ ------------------------------------------------------------------- /
     !/ Local parameters
     !/
-    INTEGER                 :: IK, ITH
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
-    REAL                    :: EB(NK), EBAND
     !/
     !/ ------------------------------------------------------------------- /
     !/
@@ -186,42 +196,12 @@ CONTAINS
     CALL STRACE (IENT, 'W3SPR1')
 #endif
     !
-    EMEAN  = 0.
-    FMEAN  = 0.
-    WNMEAN = 0.
-    AMAX   = 0.
+    ! Mean parameters via C++ ( integrals over spectrum and tail,
+    ! SIG(1:NK) passed as SIG is dimensioned 0:NK+1 )
     !
-    ! 1.  Integral over directions
-    !
-    DO IK=1, NK
-      EB(IK) = 0.
-      DO ITH=1, NTH
-        EB(IK) = EB(IK) + A(ITH,IK)
-        AMAX   = MAX ( AMAX , A(ITH,IK) )
-      END DO
-    END DO
-    !
-    ! 2.  Integrate over directions
-    !
-    DO IK=1, NK
-      EB(IK) = EB(IK) * DDEN(IK) / CG(IK)
-      EMEAN  = EMEAN  + EB(IK)
-      FMEAN  = FMEAN  + EB(IK) / SIG(IK)
-      WNMEAN = WNMEAN + EB(IK) / SQRT(WN(IK))
-    END DO
-    !
-    ! 3.  Add tail beyond discrete spectrum
-    !     ( DTH * SIG absorbed in FTxx )
-    !
-    EBAND  = EB(NK) / DDEN(NK)
-    EMEAN  = EMEAN  + EBAND * FTE
-    FMEAN  = FMEAN  + EBAND * FTF
-    WNMEAN = WNMEAN + EBAND * FTWN
-    !
-    ! 4.  Final processing
-    !
-    FMEAN  = TPIINV * EMEAN / MAX ( 1.E-7 , FMEAN )
-    WNMEAN = ( EMEAN / MAX ( 1.E-7 , WNMEAN ) )**2
+    CALL W3SPR1_CPP(A, CG, WN, SIG(1:NK), DDEN, INT(NTH, C_INT), INT(NK, C_INT), &
+         REAL(FTE, C_FLOAT), REAL(FTF, C_FLOAT), REAL(FTWN, C_FLOAT),            &
+         REAL(TPIINV, C_FLOAT), EMEAN, FMEAN, WNMEAN, AMAX)
     !
 #ifdef W3_T
     WRITE (NDST,9000) EMEAN, FMEAN, WNMEAN

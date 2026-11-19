@@ -92,16 +92,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # ww3_ts1, ww3_ts2 and ww3_ta1 use 2500 m depth (BT1 gives zero), so
-          # use the shallow-water tests that have BT1 in their switch files.
+          # Only tests in which BT1 changes the model output are used. Each was
+          # checked by running it with a deliberately perturbed C++ BT1, which
+          # changed out_grd.ww3 and out_pnt.ww3.
+          # Not used: ww3_ts1, ww3_ts2 and ww3_ta1 (2500 m depth, BT1 gives
+          # zero), ww3_tp2.6 (source terms off, FLSOU = F), ww3_tp2.15 (needs
+          # wind.nc from the WW3 FTP data, not in the repository).
           # name : work directory suffix, switch : -s option, input : -i option.
           # ww3_tp1.8 : 1-D beach (12 m to 0 m), structured grid
           - { test: ww3_tp1.8, name: PR3_UQ }
           - { test: ww3_tp1.8, name: BJ_PR3_UQ, input: input_BJ }
-          # ww3_tp2.6 and ww3_tp2.7 : unstructured grids (Limon harbour, reflection)
-          - { test: ww3_tp2.6, name: ST0, switch: ST0 }
-          - { test: ww3_tp2.6, name: ST4, switch: ST4 }
-          - { test: ww3_tp2.6, name: ST4_ASCII, switch: ST4_ASCII }
+          # ww3_tp2.7 : small unstructured grid with reflection
           - { test: ww3_tp2.7, name: ST0, switch: ST0 }
 
     steps:

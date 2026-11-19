@@ -2,7 +2,7 @@ name: bt1_cpp_vs_fortran
 # Checks that the C++ BT1 routine (BT1_ww3.cpp, called from w3sbt1md.F90)
 # gives bit-identical results to the original all-Fortran w3sbt1md.F90.
 #
-# For each regression test using BT1, WW3 is built and run twice from the same checkout:
+# For each shallow-water regression test using BT1, WW3 is built and run twice from the same checkout:
 #   work_<sw>      : current code (W3SBT1 calls the C++ routine)
 #   work_<sw>_ftn  : same code, but with w3sbt1md.F90 restored to the all-Fortran version
 # The native outputs of both runs are then compared with regtests/bin/test.comp (cmp).
@@ -92,11 +92,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # ww3_ts1 and ww3_ts2 are deep water (BT1 gives zero), so use shallow-water grids
-          - { test: ww3_tp2.6, switch: ST0 }
-          - { test: ww3_tp2.6, switch: ST4 }
-          - { test: ww3_tp2.6, switch: ST4_ASCII }
-          - { test: ww3_tp2.7, switch: ST0 }
+          # ww3_ts1, ww3_ts2 and ww3_ta1 use 2500 m depth (BT1 gives zero), so
+          # use the shallow-water tests that have BT1 in their switch files.
+          # name : work directory suffix, switch : -s option, input : -i option.
+          # ww3_tp1.8 : 1-D beach (12 m to 0 m), structured grid
+          - { test: ww3_tp1.8, name: PR3_UQ }
+          - { test: ww3_tp1.8, name: BJ_PR3_UQ, input: input_BJ }
+          # ww3_tp2.6 and ww3_tp2.7 : unstructured grids (Limon harbour, reflection)
+          - { test: ww3_tp2.6, name: ST0, switch: ST0 }
+          - { test: ww3_tp2.6, name: ST4, switch: ST4 }
+          - { test: ww3_tp2.6, name: ST4_ASCII, switch: ST4_ASCII }
+          - { test: ww3_tp2.7, name: ST0, switch: ST0 }
 
     steps:
       - name: checkout-ww3
@@ -135,12 +141,15 @@ jobs:
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
           export LD_LIBRARY_PATH="/home/runner/work/WW3/WW3/spack/var/spack/environments/ww3-gnu/.spack-env/view/:$LD_LIBRARY_PATH"
           tst=${{ matrix.test }}
-          sw=${{ matrix.switch }}
+          sw=${{ matrix.name }}
+          opts=""
+          if [ -n "${{ matrix.switch }}" ]; then opts="$opts -s ${{ matrix.switch }}"; fi
+          if [ -n "${{ matrix.input }}" ]; then opts="$opts -i ${{ matrix.input }}"; fi
 
           run_case () {
             # $1 = repository copy, $2 = work directory name
             cd ${GITHUB_WORKSPACE}/$1/regtests
-            if ! ./bin/run_cmake_test -o native -s $sw -w $2 ../model $tst; then
+            if ! ./bin/run_cmake_test -o native $opts -w $2 ../model $tst; then
               echo "=== $1 $tst $2 failed: build.log ==="; cat $tst/$2/build.log
               for f in $tst/$2/*.out; do echo "=== $f ==="; cat $f; done
               exit 1
@@ -156,7 +165,7 @@ jobs:
       - name: compare-outputs
         run: |
           tst=${{ matrix.test }}
-          sw=${{ matrix.switch }}
+          sw=${{ matrix.name }}
           cd ${GITHUB_WORKSPACE}/ww3/regtests
           ./bin/test.comp $tst work_${sw} work_${sw}_ftn | tee comp_all.txt
           # Build products (build/, exe/) always differ between the two builds

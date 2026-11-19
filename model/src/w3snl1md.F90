@@ -487,10 +487,19 @@ CONTAINS
     !
     !     - Test output is generated through W3IOGR.
     !     - No testing of IMOD ir resetting of pointers.
+    !     - The calculations are carried out by the C++ routines
+    !       INSNL1_RANGES_CPP (array sizes) and INSNL1_CPP (addresses,
+    !       scaling array and weights) in NL1_ww3.cpp (declared in
+    !       NL1_ww3.h). The arrays are allocated here, between the
+    !       two calls. The local variables of section 3 are local to the
+    !       C++ routines.
     !
     !  8. Structure :
     !
     !     - See source code.
+    !       1.-5. Internal angles, weights, indices and range (C++).
+    !       6.    Allocate arrays or check array sizes (Fortran).
+    !       7.-9. Addresses, scaling array, weights (C++).
     !
     !  9. Switches :
     !
@@ -499,7 +508,7 @@ CONTAINS
     ! 10. Source code :
     !
     !/ ------------------------------------------------------------------- /
-    USE CONSTANTS
+    USE CONSTANTS, ONLY: TPIINV
     USE W3GDATMD, ONLY: NK, NTH, NSPEC, DTH, XFR, SIG, LAM
     USE W3ADATMD, ONLY: W3DMNL
     USE W3ADATMD, ONLY: NFR, NFRHGH, NFRCHG, NSPECX, NSPECY,        &
@@ -514,8 +523,46 @@ CONTAINS
 #ifdef W3_S
     USE W3SERVMD, ONLY: STRACE
 #endif
+    USE, INTRINSIC :: ISO_C_BINDING
     !/
     IMPLICIT NONE
+    !/
+    INTERFACE
+      SUBROUTINE INSNL1_RANGES_CPP(NK, NTH, XFR, LAM, NFRHGH, NFRCHG, NSPECY, NSPECX) &
+                                   BIND(C, name="insnl1_ranges_cpp")
+        USE, INTRINSIC :: ISO_C_BINDING
+        INTEGER(C_INT), VALUE, INTENT(IN) :: NK, NTH
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: XFR, LAM
+        INTEGER(C_INT), INTENT(OUT) :: NFRHGH, NFRCHG, NSPECY, NSPECX
+      END SUBROUTINE INSNL1_RANGES_CPP
+      !
+      SUBROUTINE INSNL1_CPP(NK, NTH, DTH, XFR, LAM, TPIINV, NSPECX, SIG, &
+                            DAL1, DAL2, DAL3, &
+                            IP11, IP12, IP13, IP14, IM11, IM12, IM13, IM14, &
+                            IP21, IP22, IP23, IP24, IM21, IM22, IM23, IM24, &
+                            IC11, IC12, IC21, IC22, IC31, IC32, IC41, IC42, &
+                            IC51, IC52, IC61, IC62, IC71, IC72, IC81, IC82, &
+                            AF11, &
+                            AWG1, AWG2, AWG3, AWG4, AWG5, AWG6, AWG7, AWG8, &
+                            SWG1, SWG2, SWG3, SWG4, SWG5, SWG6, SWG7, SWG8) BIND(C, name="insnl1_cpp")
+        USE, INTRINSIC :: ISO_C_BINDING
+        INTEGER(C_INT), VALUE, INTENT(IN) :: NK, NTH, NSPECX
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: DTH, XFR, LAM, TPIINV
+        REAL(C_FLOAT), INTENT(IN) :: SIG(NK)
+        REAL(C_FLOAT), INTENT(OUT) :: DAL1, DAL2, DAL3
+        INTEGER(C_INT), INTENT(OUT) :: IP11(NSPECX), IP12(NSPECX), IP13(NSPECX), IP14(NSPECX)
+        INTEGER(C_INT), INTENT(OUT) :: IM11(NSPECX), IM12(NSPECX), IM13(NSPECX), IM14(NSPECX)
+        INTEGER(C_INT), INTENT(OUT) :: IP21(NSPECX), IP22(NSPECX), IP23(NSPECX), IP24(NSPECX)
+        INTEGER(C_INT), INTENT(OUT) :: IM21(NSPECX), IM22(NSPECX), IM23(NSPECX), IM24(NSPECX)
+        INTEGER(C_INT), INTENT(OUT) :: IC11(NK*NTH), IC12(NK*NTH), IC21(NK*NTH), IC22(NK*NTH)
+        INTEGER(C_INT), INTENT(OUT) :: IC31(NK*NTH), IC32(NK*NTH), IC41(NK*NTH), IC42(NK*NTH)
+        INTEGER(C_INT), INTENT(OUT) :: IC51(NK*NTH), IC52(NK*NTH), IC61(NK*NTH), IC62(NK*NTH)
+        INTEGER(C_INT), INTENT(OUT) :: IC71(NK*NTH), IC72(NK*NTH), IC81(NK*NTH), IC82(NK*NTH)
+        REAL(C_FLOAT), INTENT(OUT) :: AF11(NSPECX)
+        REAL(C_FLOAT), INTENT(OUT) :: AWG1, AWG2, AWG3, AWG4, AWG5, AWG6, AWG7, AWG8
+        REAL(C_FLOAT), INTENT(OUT) :: SWG1, SWG2, SWG3, SWG4, SWG5, SWG6, SWG7, SWG8
+      END SUBROUTINE INSNL1_CPP
+    END INTERFACE
     !/
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
@@ -524,19 +571,9 @@ CONTAINS
     !/
     !/ Local parameters
     !/
-    INTEGER                 :: IFR, ITH, ISP, ITHP, ITHP1, ITHM,    &
-         ITHM1,IFRP, IFRP1, IFRM, IFRM1
-    INTEGER, ALLOCATABLE    :: IF1(:), IF2(:), IF3(:), IF4(:),      &
-         IF5(:), IF6(:), IF7(:), IF8(:),      &
-         IT1(:), IT2(:), IT3(:), IT4(:),      &
-         IT5(:), IT6(:), IT7(:), IT8(:)
 #ifdef W3_S
     INTEGER, SAVE           :: IENT = 0
 #endif
-    REAL                    :: DELTH3, DELTH4, LAMM2, LAMP2, CTHP,  &
-         WTHP, WTHP1, CTHM, WTHM, WTHM1,      &
-         XFRLN, WFRP, WFRP1, WFRM, WFRM1, FR, &
-         AF11A
     !/
     !/ ------------------------------------------------------------------- /
     !/
@@ -549,177 +586,29 @@ CONTAINS
     !
     NFR     = NK
     !
-    ! 1.  Internal angles of quadruplet.
+    ! 1.-5. Internal angles, weights, indices and range of calculations
+    !       (C++). Here only the array sizes are obtained.
     !
-    LAMM2  = (1.-LAM)**2
-    LAMP2  = (1.+LAM)**2
-    DELTH3 = ACOS( (LAMM2**2+4.-LAMP2**2) / (4.*LAMM2) )
-    DELTH4 = ASIN(-SIN(DELTH3)*LAMM2/LAMP2)
-    !
-    ! 2.  Lambda dependend weight factors.
-    !
-    DAL1   = 1. / (1.+LAM)**4
-    DAL2   = 1. / (1.-LAM)**4
-    DAL3   = 2. * DAL1 * DAL2
-    !
-    ! 3.  Directional indices.
-    !
-    CTHP   = ABS(DELTH4/DTH)
-    ITHP   = INT(CTHP)
-    ITHP1  = ITHP + 1
-    WTHP   = CTHP - REAL(ITHP)
-    WTHP1  = 1.- WTHP
-    !
-    CTHM   = ABS(DELTH3/DTH)
-    ITHM   = INT(CTHM)
-    ITHM1  = ITHM + 1
-    WTHM   = CTHM - REAL(ITHM)
-    WTHM1  = 1.- WTHM
-    !
-    ! 4.  Frequency indices.
-    !
-    XFRLN  = LOG(XFR)
-    !
-    IFRP   = INT( LOG(1.+LAM) / XFRLN )
-    IFRP1  = IFRP + 1
-    WFRP   = (1.+LAM - XFR**IFRP) / (XFR**IFRP1 - XFR**IFRP)
-    WFRP1  = 1. - WFRP
-    !
-    IFRM   = INT( LOG(1.-LAM) / XFRLN )
-    IFRM1  = IFRM - 1
-    WFRM   = (XFR**IFRM -(1.-LAM)) / (XFR**IFRM - XFR**IFRM1)
-    WFRM1  = 1. - WFRM
-    !
-    ! 5.  Range of calculations
-    !
-    NFRHGH = NFR + IFRP1 - IFRM1
-    NFRCHG = NFR - IFRM1
-    NSPECY = NFRHGH * NTH
-    NSPECX = NFRCHG * NTH
+    CALL INSNL1_RANGES_CPP(INT(NK, C_INT), INT(NTH, C_INT), REAL(XFR, C_FLOAT), &
+                           REAL(LAM, C_FLOAT), NFRHGH, NFRCHG, NSPECY, NSPECX)
     !
     ! 6.  Allocate arrays or check array sizes
     !
     CALL W3DMNL ( IMOD, NDSE, NDST, NSPEC, NSPECX )
     !
-    ALLOCATE ( IF1(NFRCHG), IF2(NFRCHG), IF3(NFRCHG), IF4(NFRCHG),  &
-         IF5(NFRCHG), IF6(NFRCHG), IF7(NFRCHG), IF8(NFRCHG),  &
-         IT1(NTH), IT2(NTH), IT3(NTH), IT4(NTH),              &
-         IT5(NTH), IT6(NTH), IT7(NTH), IT8(NTH) )
+    ! 7.-9. Addresses, scaling array (f**11) and interpolation weights
+    !       via C++. SIG(1:NK) is passed as SIG is dimensioned 0:NK+1.
     !
-    ! 7.  Spectral addresses
-    !
-    DO IFR=1, NFRCHG
-      IF1(IFR) =           IFR+IFRP
-      IF2(IFR) =           IFR+IFRP1
-      IF3(IFR) = MAX ( 0 , IFR+IFRM  )
-      IF4(IFR) = MAX ( 0 , IFR+IFRM1 )
-      IF5(IFR) = MAX ( 0 , IFR-IFRP  )
-      IF6(IFR) = MAX ( 0 , IFR-IFRP1 )
-      IF7(IFR) =           IFR-IFRM
-      IF8(IFR) =           IFR-IFRM1
-    END DO
-    !
-    DO ITH=1, NTH
-      IT1(ITH) = ITH + ITHP
-      IT2(ITH) = ITH + ITHP1
-      IT3(ITH) = ITH + ITHM
-      IT4(ITH) = ITH + ITHM1
-      IT5(ITH) = ITH - ITHP
-      IT6(ITH) = ITH - ITHP1
-      IT7(ITH) = ITH - ITHM
-      IT8(ITH) = ITH - ITHM1
-      IF ( IT1(ITH).GT.NTH) IT1(ITH) = IT1(ITH) - NTH
-      IF ( IT2(ITH).GT.NTH) IT2(ITH) = IT2(ITH) - NTH
-      IF ( IT3(ITH).GT.NTH) IT3(ITH) = IT3(ITH) - NTH
-      IF ( IT4(ITH).GT.NTH) IT4(ITH) = IT4(ITH) - NTH
-      IF ( IT5(ITH).LT. 1 ) IT5(ITH) = IT5(ITH) + NTH
-      IF ( IT6(ITH).LT. 1 ) IT6(ITH) = IT6(ITH) + NTH
-      IF ( IT7(ITH).LT. 1 ) IT7(ITH) = IT7(ITH) + NTH
-      IF ( IT8(ITH).LT. 1 ) IT8(ITH) = IT8(ITH) + NTH
-    END DO
-    !
-    DO ISP=1, NSPECX
-      IFR       = 1 + (ISP-1)/NTH
-      ITH       = 1 + MOD(ISP-1,NTH)
-      IP11(ISP) = IT2(ITH) + (IF2(IFR)-1)*NTH
-      IP12(ISP) = IT1(ITH) + (IF2(IFR)-1)*NTH
-      IP13(ISP) = IT2(ITH) + (IF1(IFR)-1)*NTH
-      IP14(ISP) = IT1(ITH) + (IF1(IFR)-1)*NTH
-      IM11(ISP) = IT8(ITH) + (IF4(IFR)-1)*NTH
-      IM12(ISP) = IT7(ITH) + (IF4(IFR)-1)*NTH
-      IM13(ISP) = IT8(ITH) + (IF3(IFR)-1)*NTH
-      IM14(ISP) = IT7(ITH) + (IF3(IFR)-1)*NTH
-      IP21(ISP) = IT6(ITH) + (IF2(IFR)-1)*NTH
-      IP22(ISP) = IT5(ITH) + (IF2(IFR)-1)*NTH
-      IP23(ISP) = IT6(ITH) + (IF1(IFR)-1)*NTH
-      IP24(ISP) = IT5(ITH) + (IF1(IFR)-1)*NTH
-      IM21(ISP) = IT4(ITH) + (IF4(IFR)-1)*NTH
-      IM22(ISP) = IT3(ITH) + (IF4(IFR)-1)*NTH
-      IM23(ISP) = IT4(ITH) + (IF3(IFR)-1)*NTH
-      IM24(ISP) = IT3(ITH) + (IF3(IFR)-1)*NTH
-    END DO
-    !
-    DO ISP=1, NSPEC
-      IFR       = 1 + (ISP-1)/NTH
-      ITH       = 1 + MOD(ISP-1,NTH)
-      IC11(ISP) = IT6(ITH) + (IF6(IFR)-1)*NTH
-      IC21(ISP) = IT5(ITH) + (IF6(IFR)-1)*NTH
-      IC31(ISP) = IT6(ITH) + (IF5(IFR)-1)*NTH
-      IC41(ISP) = IT5(ITH) + (IF5(IFR)-1)*NTH
-      IC51(ISP) = IT4(ITH) + (IF8(IFR)-1)*NTH
-      IC61(ISP) = IT3(ITH) + (IF8(IFR)-1)*NTH
-      IC71(ISP) = IT4(ITH) + (IF7(IFR)-1)*NTH
-      IC81(ISP) = IT3(ITH) + (IF7(IFR)-1)*NTH
-      IC12(ISP) = IT2(ITH) + (IF6(IFR)-1)*NTH
-      IC22(ISP) = IT1(ITH) + (IF6(IFR)-1)*NTH
-      IC32(ISP) = IT2(ITH) + (IF5(IFR)-1)*NTH
-      IC42(ISP) = IT1(ITH) + (IF5(IFR)-1)*NTH
-      IC52(ISP) = IT8(ITH) + (IF8(IFR)-1)*NTH
-      IC62(ISP) = IT7(ITH) + (IF8(IFR)-1)*NTH
-      IC72(ISP) = IT8(ITH) + (IF7(IFR)-1)*NTH
-      IC82(ISP) = IT7(ITH) + (IF7(IFR)-1)*NTH
-    END DO
-    !
-    DEALLOCATE ( IF1, IF2, IF3, IF4, IF5, IF6, IF7, IF8,  &
-         IT1, IT2, IT3, IT4, IT5, IT6, IT7, IT8 )
-    !
-    ! 8.  Fill scaling array (f**11)
-    !
-    DO IFR=1, NFR
-      AF11A  = (SIG(IFR)*TPIINV)**11
-      DO ITH=1, NTH
-        AF11(ITH+(IFR-1)*NTH) = AF11A
-      END DO
-    END DO
-    !
-    FR     = SIG(NFR)*TPIINV
-    DO IFR=NFR+1, NFRCHG
-      FR     = FR * XFR
-      AF11A  = FR**11
-      DO ITH=1, NTH
-        AF11(ITH+(IFR-1)*NTH) = AF11A
-      END DO
-    END DO
-    !
-    ! 9.  Interpolation weights
-    !
-    AWG1   = WTHP  * WFRP
-    AWG2   = WTHP1 * WFRP
-    AWG3   = WTHP  * WFRP1
-    AWG4   = WTHP1 * WFRP1
-    AWG5   = WTHM  * WFRM
-    AWG6   = WTHM1 * WFRM
-    AWG7   = WTHM  * WFRM1
-    AWG8   = WTHM1 * WFRM1
-    !
-    SWG1   = AWG1**2
-    SWG2   = AWG2**2
-    SWG3   = AWG3**2
-    SWG4   = AWG4**2
-    SWG5   = AWG5**2
-    SWG6   = AWG6**2
-    SWG7   = AWG7**2
-    SWG8   = AWG8**2
+    CALL INSNL1_CPP(INT(NK, C_INT), INT(NTH, C_INT), REAL(DTH, C_FLOAT), REAL(XFR, C_FLOAT), &
+                    REAL(LAM, C_FLOAT), REAL(TPIINV, C_FLOAT), INT(NSPECX, C_INT), SIG(1:NK), &
+                    DAL1, DAL2, DAL3, &
+                    IP11, IP12, IP13, IP14, IM11, IM12, IM13, IM14, &
+                    IP21, IP22, IP23, IP24, IM21, IM22, IM23, IM24, &
+                    IC11, IC12, IC21, IC22, IC31, IC32, IC41, IC42, &
+                    IC51, IC52, IC61, IC62, IC71, IC72, IC81, IC82, &
+                    AF11, &
+                    AWG1, AWG2, AWG3, AWG4, AWG5, AWG6, AWG7, AWG8, &
+                    SWG1, SWG2, SWG3, SWG4, SWG5, SWG6, SWG7, SWG8)
     !
     RETURN
     !

@@ -1,9 +1,9 @@
 name: nl1_cpp_vs_fortran
-# Checks that the C++ NL1 routine (NL1_ww3.cpp, called from w3snl1md.F90)
-# gives bit-identical results to the original all-Fortran w3snl1md.F90.
+# Checks that the C++ NL1 routines (NL1_ww3.cpp, called from w3snl1md.F90)
+# give bit-identical results to the original all-Fortran w3snl1md.F90.
 #
 # For each regression test using NL1, WW3 is built and run twice from the same checkout:
-#   work_<sw>      : current code (W3SNL1 calls the C++ routine)
+#   work_<sw>      : current code (W3SNL1 and INSNL1 call the C++ routines)
 #   work_<sw>_ftn  : same code, but with w3snl1md.F90 restored to the all-Fortran version
 # The native outputs of both runs are then compared with regtests/bin/test.comp (cmp).
 on:

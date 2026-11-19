@@ -10,10 +10,18 @@
  * term (W3SBT1) for one spatial point, with a C-compatible interface called
  * from the WAVEWATCH III (WW3) Fortran module w3sbt1md.F90. Starting point of
  * the WW4 conversion of the BT1 source term. The output spectrum (wave action
- * density source term S(k,theta)) and the journal references are described in
- * BT1_ww3.h. Each routine has its full documentation (details, contracts and
- * heritage) in front of its definition, and a shorter version with its
- * declaration in BT1_ww3.h.
+ * density source term S(k,theta)) is described in BT1_ww3.h. Each routine has
+ * its full documentation (details, contracts and heritage) in front of its
+ * definition, and a shorter version with its declaration in BT1_ww3.h.
+ *
+ * References:
+ * - Hasselmann, K., et al., 1973: Measurements of wind-wave growth and swell
+ *   decay during the Joint North Sea Wave Project (JONSWAP). Dtsch. Hydrogr.
+ *   Z., Suppl. A, 8(12), 95 pp.
+ * - Bouws, E. and G. J. Komen, 1983: On the balance between growth and
+ *   dissipation in an extreme depth-limited wind-sea in the southern North
+ *   Sea. J. Phys. Oceanogr., 13, 1653-1658.
+ * - WAVEWATCH III Development Group, WAVEWATCH III user manual, section BT1.
  *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National

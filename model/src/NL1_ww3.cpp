@@ -6,14 +6,27 @@
  * @file NL1_ww3.cpp
  * @brief Implementation of the single-point Discrete Interaction Approximation
  * (NL1) nonlinear interaction routines for WAVEWATCH IV (WW4).
- * @details Pure C++20 implementation of the NL1 nonlinear wave-wave
- * interaction source term (W3SNL1) and its initialization (INSNL1) for one
- * spatial point, with C-compatible interfaces called from the WAVEWATCH III
- * (WW3) Fortran module w3snl1md.F90. The input and output spectrum (wave
- * action density N(k,theta)) and the journal references are described in
- * NL1_ww3.h. Each routine has its full documentation (details, contracts and
- * heritage) in front of its definition, and a shorter version with its
- * declaration in NL1_ww3.h.
+ * @details Pure C++20 implementation of the NL1 nonlinear wave-wave interaction
+ * source term (W3SNL1) and its initialization (INSNL1) for one spatial point,
+ * with C-compatible interfaces called from the WAVEWATCH III (WW3) Fortran
+ * module w3snl1md.F90. The input and output spectrum (wave action density
+ * N(k,theta)) is described in NL1_ww3.h. Each routine has its full
+ * documentation (details, contracts and heritage) in front of its definition,
+ * and a shorter version with its declaration in NL1_ww3.h.
+ *
+ * References:
+ * - Hasselmann, S. and K. Hasselmann, 1985: Computations and
+ *   parameterizations of the nonlinear energy transfer in a gravity-wave
+ *   spectrum. Part I: A new method for efficient computations of the exact
+ *   nonlinear transfer integral. J. Phys. Oceanogr., 15, 1369-1377.
+ * - Hasselmann, S., K. Hasselmann, J. H. Allender and T. P. Barnett, 1985:
+ *   Computations and parameterizations of the nonlinear energy transfer in a
+ *   gravity-wave spectrum. Part II: Parameterizations of the nonlinear energy
+ *   transfer for application in wave models. J. Phys. Oceanogr., 15,
+ *   1378-1391.
+ * - The WAMDI Group, 1988: The WAM model - A third generation ocean wave
+ *   prediction model. J. Phys. Oceanogr., 18, 1775-1810.
+ * - WAVEWATCH III Development Group, WAVEWATCH III user manual, section NL1.
  *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National

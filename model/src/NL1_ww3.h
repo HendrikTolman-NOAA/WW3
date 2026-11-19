@@ -44,20 +44,6 @@
  * Fortran addresses set by compute_insnl1 (INSNL1). In the extended arrays, the
  * addresses 1 - nth to 0 are the empty bins at low frequencies.
  *
- * References:
- * - Hasselmann, S. and K. Hasselmann, 1985: Computations and
- *   parameterizations of the nonlinear energy transfer in a gravity-wave
- *   spectrum. Part I: A new method for efficient computations of the exact
- *   nonlinear transfer integral. J. Phys. Oceanogr., 15, 1369-1377.
- * - Hasselmann, S., K. Hasselmann, J. H. Allender and T. P. Barnett, 1985:
- *   Computations and parameterizations of the nonlinear energy transfer in a
- *   gravity-wave spectrum. Part II: Parameterizations of the nonlinear energy
- *   transfer for application in wave models. J. Phys. Oceanogr., 15,
- *   1378-1391.
- * - The WAMDI Group, 1988: The WAM model - A third generation ocean wave
- *   prediction model. J. Phys. Oceanogr., 18, 1775-1810.
- * - WAVEWATCH III Development Group, WAVEWATCH III user manual, section NL1.
- *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
  * Weather Service.

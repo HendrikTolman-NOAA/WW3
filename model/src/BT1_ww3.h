@@ -35,15 +35,6 @@
  * diagonal term D_bt depends on wavenumber only, it is the same for all
  * directions of a wavenumber band.
  *
- * References:
- * - Hasselmann, K., et al., 1973: Measurements of wind-wave growth and swell
- *   decay during the Joint North Sea Wave Project (JONSWAP). Dtsch. Hydrogr.
- *   Z., Suppl. A, 8(12), 95 pp.
- * - Bouws, E. and G. J. Komen, 1983: On the balance between growth and
- *   dissipation in an extreme depth-limited wind-sea in the southern North
- *   Sea. J. Phys. Oceanogr., 13, 1653-1658.
- * - WAVEWATCH III Development Group, WAVEWATCH III user manual, section BT1.
- *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
  * Weather Service.

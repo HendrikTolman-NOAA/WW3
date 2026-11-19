@@ -15,7 +15,7 @@ concurrency:
 # for the Spack dependencies (ESMF passes Intel-only flags to its C++ compiler).
 # The WW3 C++20 code is compiled with g++ in the build job (CXX=mpicxx, I_MPI_CXX=g++).
 env:
-  cache_key: intel10-11
+  cache_key: intel10-12
   CC: icc
   FC: ifort
   CXX: icpc
@@ -132,7 +132,7 @@ jobs:
           export CC=mpiicc
           export FC=mpiifort
           export CXX=mpicxx
-          export I_MPI_CXX=g++
+          export I_MPI_CXX=icpx
           export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
           mkdir build && cd build
           if [[ ${{ matrix.switch }} == "MULTI_ESMF" ]]; then

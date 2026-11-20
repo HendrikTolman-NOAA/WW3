@@ -1,0 +1,187 @@
+name: db1_cpp_vs_fortran
+# Checks that the C++ DB1 routine (DB1_ww3.cpp, called from w3sdb1md.F90)
+# gives bit-identical results to the original all-Fortran w3sdb1md.F90.
+#
+# For each regression test in which DB1 breaking is active, WW3 is built and run twice from the same checkout:
+#   work_<sw>      : current code (W3SDB1 calls the C++ routine)
+#   work_<sw>_ftn  : same code, but with w3sdb1md.F90 restored to the all-Fortran version
+# The native outputs of both runs are then compared with regtests/bin/test.comp (cmp).
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'model/src/w3sdb1md.F90'
+      - 'model/src/DB1_ww3.cpp'
+      - 'model/src/DB1_ww3.h'
+      - 'model/src/CMakeLists.txt'
+      - '.github/workflows/db1_cpp_vs_fortran.yml'
+  push:
+    paths:
+      - 'model/src/w3sdb1md.F90'
+      - 'model/src/DB1_ww3.cpp'
+      - 'model/src/DB1_ww3.h'
+      - 'model/src/CMakeLists.txt'
+      - '.github/workflows/db1_cpp_vs_fortran.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  cache_key: gnu11-1
+  CC: gcc-14
+  FC: gfortran-14
+  CXX: g++-14
+  # Last commit with the all-Fortran w3sdb1md.F90 (parent of the commit that introduced the C++ call).
+  FORTRAN_REF: 1998314d
+
+jobs:
+  # Same Spack/OASIS setup and cache key as regtest_gnu.yml, so an existing cache is reused.
+  setup:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: checkout-ww3
+        if: steps.cache-env.outputs.cache-hit != 'true'
+        uses: actions/checkout@v3
+        with:
+            path: ww3
+
+      - name: cache-env
+        id: cache-env
+        uses: actions/cache@v3
+        with:
+          path: |
+            spack
+            ~/.spack
+            work_oasis3-mct
+          key: spack-${{ runner.os }}-${{ env.cache_key }}-${{ hashFiles('ww3/model/ci/spack_gnu.yaml') }}
+
+      - name: install-dependencies-with-spack
+        if: steps.cache-env.outputs.cache-hit != 'true'
+        run: |
+          sudo apt install cmake
+          git clone -c feature.manyFiles=true --depth=2 --branch=spack-stack-1.9.3 https://github.com/JCSDA/spack.git
+          source spack/share/spack/setup-env.sh
+          spack env create ww3-gnu ww3/model/ci/spack_gnu.yaml
+          spack env activate ww3-gnu
+          spack compiler find
+          spack external find cmake
+          spack config add "packages:all:require:['target=x86_64']"
+          spack add mpich@3.4.2
+          spack concretize
+          spack install --dirty -v
+
+      - name: build-oasis
+        if: steps.cache-env.outputs.cache-hit != 'true'
+        run: |
+          source spack/share/spack/setup-env.sh
+          spack env activate ww3-gnu
+          export WWATCH3_DIR=${GITHUB_WORKSPACE}/ww3/model
+          export OASIS_INPUT_PATH=${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.14/input/oasis3-mct
+          export OASIS_WORK_PATH=${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.14/input/work_oasis3-mct
+          cd ww3/regtests/ww3_tp2.14/input/oasis3-mct/util/make_dir
+          cmake .
+          make VERBOSE=1
+          cp -r ${GITHUB_WORKSPACE}/ww3/regtests/ww3_tp2.14/input/work_oasis3-mct ${GITHUB_WORKSPACE}
+
+  compare:
+    needs: setup
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Only tests in which DB1 changes the model output are used. Each was
+          # checked by running it with deliberately perturbed C++ DB1 code,
+          # which changed the model output files.
+          # ww3_tp1.8 (input_BJ) is sensitive to the breaking coefficient in
+          # both regimes and to the Q_b iteration; ww3_tp1.7 to the breaking
+          # coefficient for Hrms < Hmax.
+          # Not used: ww3_tp2.7, mww3_test_07, ww3_ts1, ww3_tc1 and ww3_tnc1 have
+          # DB1 active but no breaking (output unchanged with perturbed DB1).
+          # ww3_tp1.8 default input uses DB0.
+          # name : work directory suffix, switch : -s option, input : -i option.
+          # ww3_tp1.7 : 1-D beach with infragravity waves, structured grid
+          - { test: ww3_tp1.7, name: PR3_UQ }
+          # ww3_tp1.8 : 1-D beach (12 m to 0 m), Battjes-Janssen setup
+          - { test: ww3_tp1.8, name: BJ_PR3_UQ, input: input_BJ }
+
+    steps:
+      - name: checkout-ww3
+        uses: actions/checkout@v3
+        with:
+            path: ww3
+            fetch-depth: 0
+
+      - name: cache-env
+        id: cache-env
+        uses: actions/cache@v3
+        with:
+          path: |
+            spack
+            ~/.spack
+            work_oasis3-mct
+          key: spack-${{ runner.os }}-${{ env.cache_key }}-${{ hashFiles('ww3/model/ci/spack_gnu.yaml') }}
+
+      - name: create-fortran-reference-source
+        run: |
+          cp -r ${GITHUB_WORKSPACE}/ww3 ${GITHUB_WORKSPACE}/ww3_ftn
+          cd ${GITHUB_WORKSPACE}/ww3_ftn
+          git show ${FORTRAN_REF}:model/src/w3sdb1md.F90 > model/src/w3sdb1md.F90
+          if grep -q "_CPP" model/src/w3sdb1md.F90; then
+            echo "Reference w3sdb1md.F90 still calls C++ routines"; exit 1
+          fi
+          git diff --stat
+
+      - name: run-cpp-and-fortran
+        run: |
+          source ${GITHUB_WORKSPACE}/spack/share/spack/setup-env.sh
+          spack env activate ww3-gnu
+          export CC=mpicc
+          export FC=mpif90
+          export CXX=mpicxx
+          export OASISDIR=${GITHUB_WORKSPACE}/work_oasis3-mct
+          export LD_LIBRARY_PATH="/home/runner/work/WW3/WW3/spack/var/spack/environments/ww3-gnu/.spack-env/view/:$LD_LIBRARY_PATH"
+          tst=${{ matrix.test }}
+          sw=${{ matrix.name }}
+          opts=""
+          if [ -n "${{ matrix.switch }}" ]; then opts="$opts -s ${{ matrix.switch }}"; fi
+          if [ -n "${{ matrix.input }}" ]; then opts="$opts -i ${{ matrix.input }}"; fi
+
+          run_case () {
+            # $1 = repository copy, $2 = work directory name
+            cd ${GITHUB_WORKSPACE}/$1/regtests
+            if ! ./bin/run_cmake_test -o native $opts -w $2 ../model $tst; then
+              echo "=== $1 $tst $2 failed: build.log ==="; cat $tst/$2/build.log
+              for f in $tst/$2/*.out; do echo "=== $f ==="; cat $f; done
+              exit 1
+            fi
+          }
+
+          run_case ww3     work_${sw}
+          run_case ww3_ftn work_${sw}_ftn
+
+          # Put the Fortran run next to the C++ run so test.comp can compare them
+          cp -r ${GITHUB_WORKSPACE}/ww3_ftn/regtests/$tst/work_${sw}_ftn ${GITHUB_WORKSPACE}/ww3/regtests/$tst/
+
+      - name: compare-outputs
+        run: |
+          tst=${{ matrix.test }}
+          sw=${{ matrix.name }}
+          cd ${GITHUB_WORKSPACE}/ww3/regtests
+          ./bin/test.comp $tst work_${sw} work_${sw}_ftn | tee comp_all.txt
+          # Build products (build/, exe/) always differ between the two builds
+          # (different source paths and w3sdb1md.F90), so only model output is checked.
+          grep -vE "(^|Warning: )(build|exe)/" comp_all.txt > comp.txt || true
+          nsame=$(grep -c " is identical" comp.txt || true)
+          ndiff=$(grep -c " is different" comp.txt || true)
+          echo "Identical model output files: $nsame, different: $ndiff"
+          echo "### $tst $sw: $nsame identical, $ndiff different model output files" >> $GITHUB_STEP_SUMMARY
+          grep " is different" comp.txt >> $GITHUB_STEP_SUMMARY || true
+          if [ "$nsame" -eq 0 ]; then
+            echo "No output files were compared"; exit 1
+          fi
+          if [ "$ndiff" -ne 0 ]; then
+            echo "C++ and Fortran DB1 results differ"; exit 1
+          fi

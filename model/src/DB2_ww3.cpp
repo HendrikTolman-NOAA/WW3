@@ -32,8 +32,8 @@
  * @author Code Heritage: Converted and adapted from the IWB = 2 option of
  * WAVEWATCH III (WW3) w3sdb1md.F90 (W3SDB1) by J. H. G. M. Alves and Hendrik
  * L. Tolman, with contributions by A. Roland.
- * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Initial: 2026-11-20
+ * @date Last update: 2026-11-20
  */
 
 // Local
@@ -118,8 +118,8 @@ constexpr float kDenominator = 16.0F;
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from the IWB = 2 option of WW3 W3SDB1 by
  * J. H. G. M. Alves and Hendrik L. Tolman, with contributions by A. Roland.
- * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Initial: 2026-11-20
+ * @date Last update: 2026-11-20
  */
 std::optional<bool>
 compute_w3sdb2(const std::span<const float> action_density,
@@ -204,8 +204,8 @@ extern "C" {
  * above.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Kiro (Agentic AI/SI)
- * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Initial: 2026-11-20
+ * @date Last update: 2026-11-20
  */
 int w3sdb2_cpp(const float *const A, const float *const CG, const float depth,
                const float emean, const float fmean, float *const S,

@@ -59,7 +59,7 @@
  * w3sdb1md.F90 (W3SDB1) by J. H. G. M. Alves and Hendrik L. Tolman, with
  * contributions by A. Roland.
  * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Last update: 2026-11-20
  */
 
 #ifndef WW4_DB1_WW3_H
@@ -96,7 +96,7 @@ namespace ww4_db1 {
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Last update: 2026-11-20
  */
 [[nodiscard]] std::optional<bool>
 compute_w3sdb1(std::span<const float> action_density, float depth,
@@ -133,7 +133,7 @@ extern "C" {
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Last update: 2026-11-20
  */
 int w3sdb1_cpp(const float *A, float depth, float emean, float fmean,
                float wnmean, float *S, float *D, int nspec, float sdbc1,

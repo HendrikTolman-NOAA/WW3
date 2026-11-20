@@ -40,7 +40,7 @@
  * w3sdb1md.F90 (W3SDB1) by J. H. G. M. Alves and Hendrik L. Tolman, with
  * contributions by A. Roland.
  * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Last update: 2026-11-20
  */
 
 // Local
@@ -128,7 +128,7 @@ constexpr double kFullBreakingFraction = static_cast<double>(1.0F - kThreshold);
  * @author Code Heritage: Converted from WW3 W3SDB1 by J. H. G. M. Alves and
  * Hendrik L. Tolman, with contributions by A. Roland.
  * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Last update: 2026-11-20
  */
 std::optional<bool>
 compute_w3sdb1(const std::span<const float> action_density, const float depth,
@@ -237,7 +237,7 @@ extern "C" {
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Last update: 2026-11-20
  */
 int w3sdb1_cpp(const float *const A, const float depth, const float emean,
                const float fmean, const float wnmean, float *const S,

@@ -55,8 +55,8 @@
  * @author Code Heritage: Converted and adapted from the IWB = 2 option of
  * WAVEWATCH III (WW3) w3sdb1md.F90 (W3SDB1) by J. H. G. M. Alves and Hendrik
  * L. Tolman, with contributions by A. Roland.
- * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Initial: 2026-11-20
+ * @date Last update: 2026-11-20
  */
 
 #ifndef WW4_DB2_WW3_H
@@ -96,8 +96,8 @@ namespace ww4_db2 {
  * otherwise true if waves are breaking (LBREAK).
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Kiro (Agentic AI/SI)
- * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Initial: 2026-11-20
+ * @date Last update: 2026-11-20
  */
 [[nodiscard]] std::optional<bool>
 compute_w3sdb2(std::span<const float> action_density,
@@ -134,8 +134,8 @@ extern "C" {
  * are breaking, 0 otherwise.
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Kiro (Agentic AI/SI)
- * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Initial: 2026-11-20
+ * @date Last update: 2026-11-20
  */
 int w3sdb2_cpp(const float *A, const float *CG, float depth, float emean,
                float fmean, float *S, float *D, int nth, int nk,

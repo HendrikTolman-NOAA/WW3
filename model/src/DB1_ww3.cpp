@@ -25,8 +25,6 @@
  * - Eldeberky, Y. and J. A. Battjes, 1996: Spectral modelling of wave
  *   breaking: Application to Boussinesq equations. J. Geophys. Res., 101,
  *   1253-1264.
- * - Thornton, E. B. and R. T. Guza, 1983: Transformation of wave height
- *   distribution. J. Geophys. Res., 88, 5925-5938.
  * - WAVEWATCH III Development Group, WAVEWATCH III user manual, section DB1.
  *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
@@ -42,7 +40,7 @@
  * w3sdb1md.F90 (W3SDB1) by J. H. G. M. Alves and Hendrik L. Tolman, with
  * contributions by A. Roland.
  * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Last update: 2026-11-20
  */
 
 // Local
@@ -130,7 +128,7 @@ constexpr double kFullBreakingFraction = static_cast<double>(1.0F - kThreshold);
  * @author Code Heritage: Converted from WW3 W3SDB1 by J. H. G. M. Alves and
  * Hendrik L. Tolman, with contributions by A. Roland.
  * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Last update: 2026-11-20
  */
 std::optional<bool>
 compute_w3sdb1(const std::span<const float> action_density, const float depth,
@@ -239,7 +237,7 @@ extern "C" {
  * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
  * @author Contributors: Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-19
- * @date Last update: 2026-11-19
+ * @date Last update: 2026-11-20
  */
 int w3sdb1_cpp(const float *const A, const float depth, const float emean,
                const float fmean, const float wnmean, float *const S,

@@ -25,8 +25,6 @@
  * - Eldeberky, Y. and J. A. Battjes, 1996: Spectral modelling of wave
  *   breaking: Application to Boussinesq equations. J. Geophys. Res., 101,
  *   1253-1264.
- * - Thornton, E. B. and R. T. Guza, 1983: Transformation of wave height
- *   distribution. J. Geophys. Res., 88, 5925-5938.
  * - WAVEWATCH III Development Group, WAVEWATCH III user manual, section DB1.
  *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric

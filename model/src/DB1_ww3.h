@@ -30,11 +30,11 @@
  * (SDBC1, BJALFA), E the total wave energy and f_m the mean frequency. Q_b and
  * D_db are computed in double precision, as in WW3.
  *
- * Differences from the WW3 Fortran code: the alternative breaking formulation
- * of Thornton and Guza (1983) in W3SDB1 (IWB = 2) cannot be selected in WW3
- * (IWB is fixed to 1), and is not converted. The spectral integrals ETOT and
- * FMEAN2 of W3SDB1 are only used by that formulation and by debug output
- * (W3_DEBUGRUN), and are not computed.
+ * Differences from the WW3 Fortran code: the second breaking formulation in
+ * W3SDB1 (IWB = 2), which cannot be selected in WW3 (IWB is fixed to 1), is not
+ * part of DB1. In WW4 it is the separate source term DB2 (DB2_ww3.h). The
+ * spectral integrals ETOT and FMEAN2 of W3SDB1 are only used by that
+ * formulation and by debug output (W3_DEBUGRUN), and are not computed.
  *
  * Input and output spectrum: the source term is a wave action density source
  * term S_db(k,theta) on the same (k,theta) spectral grid as the action density

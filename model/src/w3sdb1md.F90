@@ -170,8 +170,9 @@ CONTAINS
     !     - Note that the Miche criterion con influence wave growth.
     !     - The source term is computed by the C++ routine W3SDB1_CPP
     !       (DB1_ww3.cpp, declared in DB1_ww3.h).
-    !     - The Thornton and Guza (1983) option (IWB = 2) could not be
-    !       selected (IWB was fixed to 1) and is not in the C++ code.
+    !     - The IWB = 2 option could not be selected (IWB was fixed to 1)
+    !       and is not part of DB1. It is the separate C++ source term DB2
+    !       (DB2_ww3.cpp, declared in DB2_ww3.h).
     !     - IX and CG are no longer used, but are kept in the parameter
     !       list so that the calling routines are unchanged.
     !     - If EMEAN is zero, S, D and LBREAK are not set (as before).

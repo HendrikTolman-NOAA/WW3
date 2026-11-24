@@ -50,10 +50,7 @@ MODULE W3STR1MD
   !
   !  4. Subroutines and functions used :
   !
-  !      Name      Type  Module   Description
-  !     ----------------------------------------------------------------
-  !      STRACE    Subr. W3SERVMD Subroutine tracing.
-  !     ----------------------------------------------------------------
+  !     See subroutine documentation.
   !
   !  5. Remarks :
   !
@@ -101,7 +98,7 @@ MODULE W3STR1MD
   !
   !  6. Switches :
   !
-  !     !/S  Enable subroutine tracing.
+  !     None.
   !
   !  7. Source code :
   !/
@@ -266,10 +263,7 @@ CONTAINS
     !
     !  4. Subroutines used :
     !
-    !      Name      Type  Module   Description
-    !     ----------------------------------------------------------------
-    !      STRACE    Subr. W3SERVMD Subroutine tracing.
-    !     ----------------------------------------------------------------
+    !     None.
     !
     !  5. Called by :
     !
@@ -286,6 +280,14 @@ CONTAINS
     !
     !  7. Remarks :
     !
+    !     - The source term is computed by the C++ routine W3STR1_CPP
+    !       (TR1_ww3.cpp, declared in TR1_ww3.h).
+    !     - IX is no longer used, but is kept in the parameter list so
+    !       that the calling routines are unchanged.
+    !     - As before, S and D are not set if the spectrum is zero, and
+    !       are not set for the highest frequency band if the
+    !       interactions are computed. W3SRCE sets them to zero first.
+    !
     !  8. Structure :
     !
     !     Determine resonance condition and the maximum discrete freq.
@@ -301,19 +303,27 @@ CONTAINS
     !
     !  9. Switches :
     !
-    !     !/S  Enable subroutine tracing.
+    !     None.
     !
     ! 10. Source code :
     !
     !/ ------------------------------------------------------------------- /
-    USE CONSTANTS, ONLY: GRAV, PI, TPI
-    USE W3GDATMD, ONLY: NK, NTH, NSPEC, DTH, SIG, DDEN, FTE, FTF
-    USE W3ODATMD, ONLY: NDSE
-#ifdef W3_S
-    USE W3SERVMD, ONLY: STRACE
-#endif
+    USE CONSTANTS, ONLY: GRAV
+    USE W3GDATMD, ONLY: NK, NTH, NSPEC, SIG, DDEN, FTE, FTF
+    USE, INTRINSIC :: ISO_C_BINDING
     !/
     IMPLICIT NONE
+    !/
+    INTERFACE
+      SUBROUTINE W3STR1_CPP(A, CG, WN, DEPTH, S, D, NTH, NK, SIG, DDEN, FTE, FTF, GRAV) &
+           BIND(C, name="w3str1_cpp")
+        USE, INTRINSIC :: ISO_C_BINDING
+        INTEGER(C_INT), VALUE, INTENT(IN) :: NTH, NK
+        REAL(C_FLOAT), VALUE, INTENT(IN) :: DEPTH, FTE, FTF, GRAV
+        REAL(C_FLOAT), INTENT(IN) :: A(NTH*NK), CG(NK), WN(NK), SIG(NK), DDEN(NK)
+        REAL(C_FLOAT), INTENT(INOUT) :: S(NTH*NK), D(NTH*NK)
+      END SUBROUTINE W3STR1_CPP
+    END INTERFACE
     !/
     !/ ------------------------------------------------------------------- /
     !/ Parameter list
@@ -323,220 +333,17 @@ CONTAINS
     REAL, INTENT(OUT)       :: S(NSPEC), D(NSPEC)
     !/
     !/ ------------------------------------------------------------------- /
-    !/ Local parameters
     !/
-    !     AUX1  :     auxiliary real
-    !     AUX2  :     auxiliary real
-    !     BIPH  :     parameterized biphase of the spectrum
-    !     C0    :     phase velocity at central bin
-    !     CM    :     phase velocity at interacting bin
-    !     DEP   :     water depth
-    !     DEP_2 :     water depth to power 2
-    !     DEP_3 :     water depth to power 3
-    !     E     :     energy density as function of frequency
-    !     E0    :     energy density at central bin
-    !     EM    :     energy density at interacting bin
-    !     HS    :     significant wave height
-    !     FT    :     auxiliary real indicating multiplication factor
-    !                 for triad contribution
-    !     I1    :     auxiliary integer
-    !     I2    :     auxiliary integer
-    !     ID    :     counter
-    !     IDDUM :     loop counter in direction space
-    !     IENT  :     number of entries
-    !     II    :     loop counter
-    !     IS    :     loop counter in frequency space
-    !     ISM   :     negative range for IS
-    !     ISM1  :     negative range for IS
-    !     ISMAX :     maximum of the counter in frequency space for
-    !                 which the triad interactions are calculated (cut-off)
-    !     ISP   :     positive range for IS
-    !     ISP1  :     positive range for IS
-    !     RINT  :     interaction coefficient
-    !     SA    :     interaction contribution of triad
-    !     SIGPICG :   sigma times 2pi/Cg (a Jacobian for E(f) -> E(k))
-    !     SINBPH:     absolute sine of biphase
-    !     STRI  :     total triad contribution
-    !     WISM  :     interpolation weight factor corresponding to lower harmonic
-    !     WISM1 :     interpolation weight factor corresponding to lower harmonic
-    !     WISP  :     interpolation weight factor corresponding to higher harmonic
-    !     WISP1 :     interpolation weight factor corresponding to higher harmonic
-    !     W0    :     radian frequency of central bin
-    !     WM    :     radian frequency of interacting bin
-    !     WN0   :     wave number at central bin
-    !     WNM   :     wave number at interacting bin
-    !     XIS   :     rate between two succeeding frequency counters
-    !     XISLN :     log of XIS
     !
-#ifdef W3_S
-    INTEGER, SAVE :: IENT = 0
-#endif
-    INTEGER :: I1, I2, ID, IDDUM, II, IS, ISM, ISM1, ISMAX
-    INTEGER :: ISP, ISP1, ITH, IK
-    REAL    :: AUX1, AUX2, BIPH, C0, CM, DEP, DEP_2, DEP_3, E0, EM, HS
-    REAL    :: FT, RINT, SIGPICG, SINBPH, STRI, WISM, WISM1, WISP
-    REAL    :: WISP1, W0, WM, WN0, WNM, XIS, XISLN, EDM, ED0, G9DEP, STRI2
-    REAL    :: E(NK), SA(NTH,100), SA2(NTH,100), A2(NSPEC), A3(NSPEC), HMAX
-    REAL    :: EB(NK), EBAND, EMEAN, SIGM01, ED(NK)
-!----- Temp (to be moved) -----
-    REAL    :: EF(NK), JACEPS, DIFFSTR
-    REAL    :: PTRIAD(5)
-    REAL    :: URSELL, ALPHAR
-!------------------------------
-!/
-!/ ------------------------------------------------------------------- /
-!/
-#ifdef W3_S
-    CALL STRACE (IENT, 'W3STR1')
-#endif
-!
-! 1.  Integral over directions
-!
-    IF (MAXVAL(A) .LT. TINY(1.)) THEN
-      RETURN 
-    ENDIF 
-
-    SIGM01 = 0.
-    EMEAN  = 0.
-    JACEPS = 1E-12
-
-    HMAX   = DEPTH * 0.73
-
-    DO IK=1, NK
-      EB(IK) = 0.
-      ED(IK) = 0.
-      DO ITH=1, NTH
-        EB(IK) = EB(IK) + A(ITH+(IK-1)*NTH)
-        ED(IK) = ED(IK) + A(ITH+(IK-1)*NTH) * DDEN(IK) / CG(IK)
-      END DO
-    END DO
-!
-! 2.  Integrate over frequencies. 
-!
-    DO IK=1, NK
-      EB(IK) = EB(IK) * DDEN(IK) / CG(IK)
-      EMEAN  = EMEAN  + EB(IK)
-      SIGM01  = SIGM01  + EB(IK)*SIG(IK)
-    END DO
-!
-! 3.  Add tail beyond discrete spectrum
-!     ( DTH * SIG(NK) absorbed in FTxx )
-!
-    EBAND  = EB(NK) / DDEN(NK)
-    EMEAN  = EMEAN  + EBAND * FTE
-    SIGM01 = SIGM01 + EBAND * FTF
-!
-! 4.  Final processing
-!
-    SIGM01 = SIGM01 / EMEAN
-
-!---- Temporary parameters (to be replaced by namelists) -----
-
-    PTRIAD(1) = 1. 
-    PTRIAD(2) = 10.
-    PTRIAD(3) = 10. ! not used 
-    PTRIAD(4) = 0.2
-    PTRIAD(5) = 0.01
-
-    HS = 4.*SQRT( MAX(0.,EMEAN) )
-    URSELL = (GRAV*HS)/(2.*SQRT(2.)*SIGM01**2*DEPTH**2)
-!---------------------------------------------
-
-    DEP   = DEPTH
-    DEP_2 = DEP**2
-    DEP_3 = DEP**3
-    G9DEP = GRAV * DEP
-!
-!     --- compute some indices in sigma space
-!
-    I2     = INT (FLOAT(NK) / 2.)
-    I1     = I2 - 1
-    XIS    = SIG(I2) / SIG(I1)
-    XISLN  = LOG( XIS )
-
-    ISP    = INT( LOG(2.) / XISLN )
-    ISP1   = ISP + 1
-    WISP   = (2. - XIS**ISP) / (XIS**ISP1 - XIS**ISP)
-    WISP1  = 1. - WISP
-
-    ISM    = INT( LOG(0.5) / XISLN )
-    ISM1   = ISM - 1
-    WISM   = (XIS**ISM -0.5) / (XIS**ISM - XIS**ISM1)
-    WISM1  = 1. - WISM
-
-    E  = 0.
-    SA = 0.
-!
-!     --- compute maximum frequency for which interactions are calculated
-!
-    ISMAX = 1
-    DO IK = 1, NK
-     IF ( SIG(IK) .LT. ( PTRIAD(2) * SIGM01) ) THEN
-        ISMAX = IK
-     ENDIF
-    ENDDO
-    ISMAX = MAX ( ISMAX , ISP1 )
-!
-!     --- compute 3-wave interactions
-!
-      IF (URSELL.GE.PTRIAD(5) ) THEN ! AR: No need for switching it off from my point of view!
-!
-!       --- calculate biphase
-!
-        BIPH   = (0.5*PI)*(TANH(PTRIAD(4)/URSELL)-1.)
-        SINBPH = ABS(SIN(BIPH) )
-        EF     = 0.
-
-        DO ITH = 1, NTH
-          DO IK = 1, NK
-            E(IK)  = A(ITH+(IK-1)*NTH) * TPI * SIG(IK) / CG(IK)
-            EF(IK) = EF(IK) + E(IK)        
-          END DO
-          DO IK = 1, ISMAX
-            E0  = E(IK)
-            ED0 = EB(IK) 
-            W0  = SIG(IK)
-            WN0 = WN(IK)
-            C0  = W0 / WN0
-            IF ( IK.GT.-ISM1 ) THEN
-               EM  = WISM * E(IK+ISM1)   + WISM1 * E(IK+ISM)
-               EDM = WISM * EB(IK+ISM1)  + WISM1 * EB(IK+ISM)
-               WM  = WISM * SIG(IK+ISM1) + WISM1 * SIG(IK+ISM)
-               WNM = WISM * WN(IK+ISM1)  + WISM1 * WN(IK+ISM)
-               CM  = WM / WNM
-            ELSE
-               EM  = 0.
-               EDM = 0.
-               WM  = 0.
-               WNM = 0.
-               CM  = 0.
-            END IF
-            AUX1 = WNM**2 * ( G9DEP + 2*CM**2 ) 
-            AUX2 = WN0*DEP* (G9DEP+(2./15.)*GRAV*DEP_3*WN0**2-(2./5.)*W0**2*DEP_2)
-            RINT = AUX1 / AUX2
-            FT   = PTRIAD(1) * C0 * CG(IK) * RINT**2 * SINBPH 
-            SA(ITH,IK) = MAX(0.,FT * ( EM * EM - 2. * EM * E0)) ! 1/(m²*s²) * m4 = m²/s² !!! [m²/s]
-          END DO
-        END DO
-
-        DO IK = 1, NK - 1 
-          SIGPICG = SIG(IK)*TPI/CG(IK) ! 1/s * s/m = 1/m
-          DO ITH = 1, NTH
-            STRI = SA(ITH,IK) - 2 * (WISP *  SA(ITH,IK+ISP1) + WISP1 *  SA(ITH,IK+ISP))
-            IF (A(ITH+(IK-1)*NTH) .gt. JACEPS) THEN
-              D(ITH+(IK-1)*NTH) = STRI / ((A(ITH+(IK-1)*NTH)) * SIGPICG) 
-              S(ITH+(IK-1)*NTH) = STRI / SIGPICG 
-            ELSE
-              D(ITH+(IK-1)*NTH) = 0.
-              S(ITH+(IK-1)*NTH) = 0.
-            ENDIF
-          END DO
-        END DO
-      ELSE
-        D = 0.
-        S = 0.
-      END IF
-
+    ! 1.  Compute source term via C++ ------------------------------------- *
+    !
+    ! SIG(1:NK) is passed as SIG is dimensioned 0:NK+1.
+    !
+    CALL W3STR1_CPP(A, CG, WN, REAL(DEPTH, C_FLOAT), S, D,                &
+                    INT(NTH, C_INT), INT(NK, C_INT), SIG(1:NK), DDEN(1:NK), &
+                    REAL(FTE, C_FLOAT), REAL(FTF, C_FLOAT), REAL(GRAV, C_FLOAT))
+    !
+    RETURN
     !/
     !/ End of W3STR1 ----------------------------------------------------- /
     !/

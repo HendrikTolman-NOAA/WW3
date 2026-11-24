@@ -16,7 +16,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/check_switches.cmake)
 
 check_switches("${switches}" switch_files)
 
-add_library(ww3_lib STATIC ${ftn_src} ${switch_files} ST1_ww3.cpp LN1_ww3.cpp NL1_ww3.cpp BT1_ww3.cpp DB1_ww3.cpp DB2_ww3.cpp TR1_ww3.cpp)
+add_library(ww3_lib STATIC ${ftn_src} ${switch_files} ST1_ww3.cpp LN1_ww3.cpp NL1_ww3.cpp BT1_ww3.cpp DB1_ww3.cpp DB2_ww3.cpp TR1_ww3.cpp BT4_ww3.cpp)
 # Create alias with same name as exported target
 # so that WW3 can be usead with add_subdirectory
 add_library(WW3::WW3 ALIAS ww3_lib)

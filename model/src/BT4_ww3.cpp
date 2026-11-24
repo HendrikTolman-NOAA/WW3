@@ -200,8 +200,15 @@ float friction_factor(const std::span<const float> friction_table,
  * treatment (TABU_ERF).
  * @details Values for x = -x_max + i dx, i = 0 ... n, with dx = 2 x_max / n.
  * For x < 0, WW3 evaluates the value as (1 - |erf(x)|) / 2, which is the same
- * as (1 + erf(x)) / 2. The factor 2**(1/2) in TABU_ERF is the integer 1. The
- * operations match the Fortran original so results are reproducible.
+ * as (1 + erf(x)) / 2. The operations match the Fortran original so results
+ * are reproducible.
+ *
+ * Possible bug in the WW3 code, reproduced here: TABU_ERF multiplies by
+ * 2**(1/2), which is the integer 1 (1/2 is integer division), and uses
+ * erf(x). The table is used as the probability that the Shields number
+ * exceeds the ripple threshold, with x in standard deviations, for which the
+ * cumulative normal distribution (1 + erf(x / sqrt(2))) / 2 may have been
+ * intended. To be reviewed before use in WW4.
  * @param[out] erf_table Tabulated values (size n + 1 for n intervals,
  * ERFTABLE(0:SIZEERFTABLE)).
  * @param[in] max_stdev Range x_max of the table (XERFMAX).
@@ -220,6 +227,7 @@ float compute_tabu_erf(const std::span<float> erf_table,
   const float step = (2.0F * max_stdev) / static_cast<float>(num_intervals);
   for (std::size_t i = 0; i <= num_intervals; ++i) {
     const float x = -max_stdev + (static_cast<float>(i) * step);
+    // As in WW3: erf(x), not erf(x / sqrt(2)) (possible bug, see @details).
     erf_table[i] = x < 0.0F ? (1.0F - std::abs(std::erf(x))) / 2.0F
                             : (1.0F + std::erf(x)) / 2.0F;
   }
@@ -250,6 +258,14 @@ float compute_tabu_erf(const std::span<float> erf_table,
  * and MIN(a, b) are written as std::max(a, b) and std::min(a, b) with the
  * same argument order. The sub-grid weights WSUB of W3SBT4 are declared but
  * not used, and are not included here.
+ *
+ * Possible bug in the WW3 code, reproduced here: the momentum flux TAUBBL is
+ * summed with ECOS(IS) and ESIN(IS) using the spectral index IS instead of
+ * the direction index ITH (cos_table[is] and sin_table[is] here). As only the
+ * first nth elements of these WW3 arrays are set and the others are zero,
+ * only the first frequency band contributes to TAUBBL. The intended
+ * expression is probably the sum over all bands with ECOS(ITH) and ESIN(ITH).
+ * To be reviewed before use in WW4.
  * @param[in] action_density Action density spectrum N(k,theta) as 1-D array
  * (size nspec = nth * nk), see file description.
  * @param[in] group_velocity Group velocity c_g of each frequency band (size
@@ -477,6 +493,8 @@ void compute_w3sbt4(const std::span<const float> action_density,
       diagonal_term[is] = diagonal_value;
       const float momentum =
           (momentum_factor * diagonal_value) * action_density[is];
+      // As in WW3: index is instead of ith, so only the first band
+      // contributes (possible bug, see @details).
       bottom_stress[0] = bottom_stress[0] - (momentum * cos_table[is]);
       bottom_stress[1] = bottom_stress[1] - (momentum * sin_table[is]);
       source_term[is] = diagonal_value * action_density[is];

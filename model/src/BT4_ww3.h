@@ -53,13 +53,19 @@
  * index of direction ith and wavenumber ik (both 0-based) is is = ith + nth *
  * ik, with nth the number of directions.
  *
- * Kept as in the WW3 code (please review):
+ * Possible bugs in the WW3 code, reproduced here to keep the results
+ * identical (to be reviewed before use in WW4):
  * - The momentum flux TAUBBL uses ECOS(IS) and ESIN(IS) with the spectral index
- *   IS. In WW3 only the first NTH elements of ECOS and ESIN (the directions)
- *   are set and the others are zero, so that only the first frequency band
- *   contributes to TAUBBL. The arrays are passed in full for this reason.
+ *   IS instead of the direction index ITH. In WW3 only the first NTH elements
+ *   of ECOS and ESIN (the directions) are set and the others are zero, so that
+ *   only the first frequency band contributes to TAUBBL. The arrays are passed
+ *   in full for this reason. The intended expression is probably the sum over
+ *   all bands with ECOS(ITH) and ESIN(ITH).
  * - The erf table is (1 + erf(x)) / 2 for x from -4 to 4. The factor
- *   2**(1/2) in TABU_ERF is an integer expression equal to 1.
+ *   2**(1/2) in TABU_ERF is an integer expression equal to 1 (1/2 is integer
+ *   division). The cumulative normal distribution (1 + erf(x / sqrt(2))) / 2,
+ *   with x in standard deviations (XERFMAX = 4 "number of stdev"), may have
+ *   been intended.
  *
  * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
  * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National

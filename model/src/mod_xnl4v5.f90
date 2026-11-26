@@ -2719,388 +2719,6 @@ if(iq_warn > 10) stop 'Too many warnings'
 return
 end subroutine
 !------------------------------------------------------------------------------
-
-!>
-!> @brief Retrieve locus from basic locus as stored in the database.
-!>
-!> @details In the case of geometric scaling, k-scaling is used using scale laws
-!>  described by Tracy.
-!>
-!>  Directional transformation using linear transformations, shifting and mirror
-!>  imaging.
-!>
-!> @param[in]  ik1   K-index of wave number k1.
-!> @param[in]  ia1   Theta-index of wave number k1.
-!> @param[in]  ik3   K-index of wave number k3.
-!> @param[in]  ia3   Theta-index of wave number k3.
-!> @param[out] ifnd  Indicator if reference locus exists in database.
-!>
-!> @author  Gerbrant van Vledder  @date 27-Aug-2003
-!>
-
-subroutine q_getlocus(ik1,ia1,ik3,ia3,ifnd)
-!------------------------------------------------------------------------------
-!
-!   +-------+    ALKYON Hydraulic Consultancy & Research
-!   |       |    Gerbrant van Vledder
-!   |   +---+
-!   |   | +---+  Last update: 27 August 2003
-!   +---+ |   |  Release: 5.0
-!         +---+
-!
-! do not use m_xnldata
-use m_constants
-use serv_xnl4v5
-!----------------------------------------------------------------------------------
-implicit none
-!
-!  0. Update history
-!
-!    25/02/1999  Initial version
-!    15/04/1999  Extra parameter IFND to indicate if a
-!                reference locus exists in the data base
-!    19/07/1999  Restructured and some bugs removed
-!    20/07/1999  Option added to compute locus directly, no database
-!                or scaling involved. IFND < 0
-!    15/10/1999  Information to transformation file updated
-!    16/10/1999  Equation for computing address for storage updated
-!    25/10/1999  Transformations updated
-!    28/10/1999  Local variables ia1 and ia3 may not be changed, temp. variables
-!                it1 and it3 included
-!    29/10/1999  Use of IQ_TRF modified
-!                EPSK introduced to check equality of loci
-!    28/12/1999  A_CMPLOC renamed to Q_CMPLOC
-!    03/01/2000  IQ_START replaced by IQ_LOCUS
-!    05/01/2000  Interface with Q_CMPLOC modified
-!    08/08/2002  Upgrade to release 4.0
-!    13/08/2002  Indexing in terms of integers and real weights
-!                upgrade to release 4.0
-!    19/08/2002  Bug fixed in transforming CASE 6
-!                Interpolation option added
-!    12/06/2003  Parameter t_ws set equal to r_ws
-!    13/06/2003  Parameter t_cple, t_jac and t_sym assigned
-!                Bug fixed in nearest bin approach, symmetry regained
-!    27/08/2003  Short-cut when number of points on locus is ZERO
-!    04/07/2025  Remove labelled statements
-!
-!  1. Purpose:
-!
-!     Retrieve locus from basic locus as stored in the database
-!
-!  2. Method
-!
-!     In the case of geometric scaling, k-scaling is used using scale laws
-!     described by Tracy
-!
-!     Directional transformation using linear transformations, shifting and mirror
-!     imaging.
-!
-!
-!  3. Parameter list:
-!
-!Type      I/O           name       Description
-!------------------------------------------------------------------------------
-integer, intent(in)  ::  ik1    !  k-index of wave number k1
-integer, intent(in)  ::  ia1    !  theta-index of wave number k1
-integer, intent(in)  ::  ik3    !  k-index of wave number k3
-integer, intent(in)  ::  ia3    !  theta-index of wave number k3
-integer, intent(out) :: ifnd    !  indicator if reference locus exists in database
-!
-!  4. Error messages
-!
-!  5. Called by
-!
-!     Q_T13V4
-!
-!  6. Subroutines used
-!
-!  7. Remarks
-!
-!  8. Structure
-!
-!  9. Switches
-!
-! 10. Source code
-!------------------------------------------------------------------------------
-!     Local variables
-!
-integer it1,it3           ! work indices for directions, copy of ia1 and ia3
-integer idir              ! switch to indicate if locus should be inverted
-integer itrans            ! type of transformation
-integer iloc,jloc         ! counters along locus
-integer iadif,ikdif       ! difference in angular and k-index
-integer ja1r,ja3r
-integer imirror           ! extra step when locus is mirrorred
-!
-integer ibeta,kdif
-integer nloc             ! number of points on locus
-!
-integer ierr
-integer kmem                 ! index for storing 2-d matrix in 1-d array
-integer amem                 ! index for storing direction of reference wave number k3
-!
-real lambda                  ! geometric scale factor
-real j_lambda                ! scale factor for Jacobian term
-real c_lambda                ! scale factor for coupling coefficient
-real zz_lambda               ! combined scale factor
-!
-real xt2(nlocus),yt2(nlocus) ! xy-components of test k2-locus
-real xt4(nlocus),yt4(nlocus) ! xy-components of test k4-locus
-real wk,wa,vk,va
-!! \A
-!! real x_kfunc                 ! real function to compute wave number
-!! \Z
-!
-integer ikmin,ja1,ja3,jk1,jk3,itmin
-integer ibdif,nhalf
-integer iaq,ikq              ! counters for loop over direction and wave numbers
-!------------------------------------------------------------------------------
-!
-!! data i_getloc /0/  ! Initialise counter
-!-------------------------------------------------------------------------------------
-call q_stack('+q_getlocus')
-!
-!------------------------------------------------------------------------------
-! initialisations
-!------------------------------------------------------------------------------
-!
-it1 = ia1
-it3 = ia3
-!
-imirror = 1
-!
-ikmin = min(ik1,ik3)    ! compute minimum of wave number index
-ikdif = abs(ik1-ik3)    ! compute difference between wave number indices
-!
-if (iq_geom ==0) then
-  jk1 = min(ik1,ik3)
-  jk3 = max(ik1,ik3)
-else
-  jk1 = 1
-  jk3 = ikdif + 1       ! compute k-index of wave number k3 relative to reference wave number
-end if
-!
-itmin = min(it1,it3)    ! compute minimum angle of k1 and k3
-iadif = abs(it1-it3)    ! difference index
-ja1   = 1               ! index of direction of reference wave number k1
-ja3   = iadif+iaref     ! compute theta-index of direction of wave number k3
-!
-!------------------------------------------------------------------------------
-!  circle grid, modify ranges and transformation variables
-!------------------------------------------------------------------------------
-!
-if (iq_grid==3) then
-  nhalf = naq/2
-  if (iadif > nhalf) then
-    if(it1 > nhalf) it1 = it1 - naq
-    if(it3 > nhalf) it3 = it3 - naq
-  end if
-  itmin = min(it1,it3)
-  ibdif = (naq - abs(naq-2*abs(it1-it3)))/2   ! compute shortest difference in indices
-                                              ! while taking care of periodicity
-  ja3   = ibdif + 1
-  iadif = ibdif
-end if
-!
-ja1r = 1
-ja3r = iadif + 1
-amem = iadif + 1   ! compute index of reference wave number k3 in interaction grid
-!
-!------------------------------------------------------------------------------
-! obtain k-index of reference wave number
-!------------------------------------------------------------------------------
-!
-if(iq_geom==0) then
-  kmem = (jk3-jk1+1) - (jk1-2*nkq-2)*(jk1-1)/2
-else
-  kmem = ikdif+1
-end if
-!
-!
-!------------------------------------------------------------------------------
-!  check memory indexing
-!------------------------------------------------------------------------------
-!
-if (amem > iamax) then
-  ifnd = 0
-  call q_error('e','MEMORY','Incorrect addres')
-  call q_stack('-q_getlocus')
-  return
-end if
-!
-!-----------------------------------------------------------------------------
-! retrieve info from reference locus in
-! get actual number of valid points along locus (NLOCUSZ)
-! depending on value of switch IQ_COMPACT
-!------------------------------------------------------------------------------
-!
-nloc    = quad_nloc(kmem,amem)
-nlocusx = nloc
-!
-!  short-cut when number of NON-ZERO points on locus is ZERO [27/8/2003]
-!
-if(nlocusx==0) then
-  call q_stack('-q_getlocus')
-  return
-end if
-!
-r_ik2(1:nloc)  = quad_ik2(kmem,amem,1:nloc)
-r_ia2(1:nloc)  = quad_ia2(kmem,amem,1:nloc)
-r_ik4(1:nloc)  = quad_ik4(kmem,amem,1:nloc)
-r_ia4(1:nloc)  = quad_ia4(kmem,amem,1:nloc)
-!
-r_w1k2(1:nloc) = quad_w1k2(kmem,amem,1:nloc)
-r_w2k2(1:nloc) = quad_w2k2(kmem,amem,1:nloc)
-r_w3k2(1:nloc) = quad_w3k2(kmem,amem,1:nloc)
-r_w4k2(1:nloc) = quad_w4k2(kmem,amem,1:nloc)
-!
-r_w1k4(1:nloc) = quad_w1k4(kmem,amem,1:nloc)
-r_w2k4(1:nloc) = quad_w2k4(kmem,amem,1:nloc)
-r_w3k4(1:nloc) = quad_w3k4(kmem,amem,1:nloc)
-r_w4k4(1:nloc) = quad_w4k4(kmem,amem,1:nloc)
-!
-r_zz(1:nloc)   = quad_zz(kmem,amem,1:nloc)
-!
-!------------------------------------------------------------------------------
-kdif = ikmin - 1
-if(iq_geom==0) then
-  lambda = 1.
-  kdif  = 0.
-else
-  lambda = q_kfac**(ikmin-1.)
-end if
-!
-j_lambda = 1./sqrt(lambda)
-c_lambda = lambda**6
-!
-!  compute combined scale factor
-!
-zz_lambda = lambda*c_lambda/j_lambda
-!
-!------------------------------------------------------------------------------
-! select case to transform reference locus
-!
-! Transform of weigths reduces to an addition or subtraction
-! because of log-spacing of wave numbers in the case of deep water
-!
-if(ik3 > ik1 .and. it3 >= it1) then      ! Case 1
-  itrans = 1
-  t_ik2(1:nloc)  = kdif + r_ik2(1:nloc)
-  t_ik4(1:nloc)  = kdif + r_ik4(1:nloc)
-  ibeta          = itmin-iaref
-  t_ia2(1:nloc)  = r_ia2(1:nloc) + ibeta
-  t_ia4(1:nloc)  = r_ia4(1:nloc) + ibeta
-  idir   = 1
-  t_w1k2(1:nloc)  = r_w1k2(1:nloc)
-  t_w2k2(1:nloc)  = r_w2k2(1:nloc)
-  t_w3k2(1:nloc)  = r_w3k2(1:nloc)
-  t_w4k2(1:nloc)  = r_w4k2(1:nloc)
-  t_w1k4(1:nloc)  = r_w1k4(1:nloc)
-  t_w2k4(1:nloc)  = r_w2k4(1:nloc)
-  t_w3k4(1:nloc)  = r_w3k4(1:nloc)
-  t_w4k4(1:nloc)  = r_w4k4(1:nloc)
-!
-elseif(ik3 > ik1 .and. it3 < it1)  then  ! Case 2
-  itrans = 2
-  t_ik2(1:nloc)  = kdif + r_ik2(1:nloc)
-  t_ik4(1:nloc)  = kdif + r_ik4(1:nloc)
-  ibeta          = int(q_ad(ia1)/q_deltad+0.01)
-  t_ia2(1:nloc)  = ibeta + 2.*iaref - r_ia2(1:nloc) -imirror
-  t_ia4(1:nloc)  = ibeta + 2.*iaref - r_ia4(1:nloc) -imirror
-  t_w1k2(1:nloc)  = r_w3k2(1:nloc)
-  t_w2k2(1:nloc)  = r_w4k2(1:nloc)
-  t_w3k2(1:nloc)  = r_w1k2(1:nloc)
-  t_w4k2(1:nloc)  = r_w2k2(1:nloc)
-  t_w1k4(1:nloc)  = r_w3k4(1:nloc)
-  t_w2k4(1:nloc)  = r_w4k4(1:nloc)
-  t_w3k4(1:nloc)  = r_w1k4(1:nloc)
-  t_w4k4(1:nloc)  = r_w2k4(1:nloc)
-  idir   = -1   ! according to theory
-!  idir   = 1    ! as it should be to get symmetry
-!
-elseif(ik1 > ik3 .and. it3 >= it1) then      ! Case 3
-  itrans = 3
-  t_ik2(1:nloc)  = kdif + r_ik4(1:nloc)
-  t_ik4(1:nloc)  = kdif + r_ik2(1:nloc)
-  ibeta          = int(q_ad(ia3)/q_deltad+0.01)
-  t_ia2(1:nloc)  = ibeta + 2.*iaref - r_ia4(1:nloc) -imirror
-  t_ia4(1:nloc)  = ibeta + 2.*iaref - r_ia2(1:nloc) -imirror
-  t_w1k2(1:nloc)  = r_w3k2(1:nloc)
-  t_w2k2(1:nloc)  = r_w4k2(1:nloc)
-  t_w3k2(1:nloc)  = r_w1k2(1:nloc)
-  t_w4k2(1:nloc)  = r_w2k2(1:nloc)
-  t_w1k4(1:nloc)  = r_w3k4(1:nloc)
-  t_w2k4(1:nloc)  = r_w4k4(1:nloc)
-  t_w3k4(1:nloc)  = r_w1k4(1:nloc)
-  t_w4k4(1:nloc)  = r_w2k4(1:nloc)
-  idir   = 1
-!
-elseif(ik1 > ik3 .and. it1 > it3) then   ! Case 4
-  itrans = 4
-  t_ik2(1:nloc)  = kdif + r_ik4(1:nloc)
-  t_ik4(1:nloc)  = kdif + r_ik2(1:nloc)
-  ibeta          = itmin-iaref
-  t_ia2(1:nloc)  = ibeta + r_ia4(1:nloc)
-  t_ia4(1:nloc)  = ibeta + r_ia2(1:nloc)
-  idir   = -1
-  t_w1k2(1:nloc)  = r_w1k2(1:nloc)
-  t_w2k2(1:nloc)  = r_w2k2(1:nloc)
-  t_w3k2(1:nloc)  = r_w3k2(1:nloc)
-  t_w4k2(1:nloc)  = r_w4k2(1:nloc)
-  t_w1k4(1:nloc)  = r_w1k4(1:nloc)
-  t_w2k4(1:nloc)  = r_w2k4(1:nloc)
-  t_w3k4(1:nloc)  = r_w3k4(1:nloc)
-  t_w4k4(1:nloc)  = r_w4k4(1:nloc)
-!
-elseif(ik1==ik3 .and. it3 > it1) then  ! Case 5
-  itrans = 5
-  t_ik2(1:nloc)  = kdif + r_ik2(1:nloc)
-  t_ik4(1:nloc)  = kdif + r_ik4(1:nloc)
-  ibeta          = itmin-iaref
-  t_ia2(1:nloc)  = r_ia2(1:nloc) + ibeta
-  t_ia4(1:nloc)  = r_ia4(1:nloc) + ibeta
-  idir   = 1
-  t_w1k2(1:nloc)  = r_w1k2(1:nloc)
-  t_w2k2(1:nloc)  = r_w2k2(1:nloc)
-  t_w3k2(1:nloc)  = r_w3k2(1:nloc)
-  t_w4k2(1:nloc)  = r_w4k2(1:nloc)
-  t_w1k4(1:nloc)  = r_w1k4(1:nloc)
-  t_w2k4(1:nloc)  = r_w2k4(1:nloc)
-  t_w3k4(1:nloc)  = r_w3k4(1:nloc)
-  t_w4k4(1:nloc)  = r_w4k4(1:nloc)
-!
-elseif(ik1==ik3 .and. it1 > it3) then  ! Case 6
-  itrans = 6
-  t_ik2(1:nloc)  = kdif + r_ik4(1:nloc)
-  t_ik4(1:nloc)  = kdif + r_ik2(1:nloc)
-  ibeta          = int(q_ad(ia1)/q_deltad+0.01)
-  t_ia2(1:nloc)  = ibeta + 2.*iaref - r_ia2(1:nloc) -imirror
-  t_ia4(1:nloc)  = ibeta + 2.*iaref - r_ia4(1:nloc) -imirror
-!!  ibeta          = itmin-iaref
-!!  t_ia2(1:nloc)  = r_ia4(1:nloc) + ibeta
-!!  t_ia4(1:nloc)  = r_ia2(1:nloc) + ibeta
-  idir   = -1
-  t_w1k2(1:nloc)  = r_w3k2(1:nloc)
-  t_w2k2(1:nloc)  = r_w4k2(1:nloc)
-  t_w3k2(1:nloc)  = r_w1k2(1:nloc)
-  t_w4k2(1:nloc)  = r_w2k2(1:nloc)
-  t_w1k4(1:nloc)  = r_w3k4(1:nloc)
-  t_w2k4(1:nloc)  = r_w4k4(1:nloc)
-  t_w3k4(1:nloc)  = r_w1k4(1:nloc)
-  t_w4k4(1:nloc)  = r_w2k4(1:nloc)
-end if
-!
-t_zz(1:nloc)   = lambda*c_lambda/j_lambda * r_zz(1:nloc)
-!
-ifnd = 1
-!
-!------------------------------------------------------------------------------
-!
-call q_stack('-q_getlocus')
-!
-return
-end subroutine
-!------------------------------------------------------------------------------
 !>
 !> @brief Initializing module for quadruplets and setting default settings.
 !>
@@ -5745,268 +5363,6 @@ return
 end subroutine
 !------------------------------------------------------------------------------
 !>
-!> @brief Compute the function T13, defined as a line integral around a locus.
-!>
-!> @details See Tracy and Resio (1982) and Van Vledder (1999).
-!>
-!> @param[in]   ik1    Index of k-component of wave number k1
-!> @param[in]   ia1    Index of a-component of wave number k1.
-!> @param[in]   ik3    Index of k-component of wave number k3.
-!> @param[in]   ia3    Index of a-component of wave number k3.
-!> @param[out]  t13    Value of line integral over a specific locus.
-!> @param[out]  diagk1 Contribution to diagonal term of k1.
-!> @param[out]  diagk3 Contribution to diagonal term of k3.
-!>
-!> @author  Gerbrant van Vledder  @date 5-Sep-2003
-!>
-
-subroutine q_t13v4(ik1,ia1,ik3,ia3,t13,diagk1,diagk3)
-!------------------------------------------------------------------------------
-!
-!   +-------+    ALKYON Hydraulic Consultancy & Research
-!   |       |    Gerbrant van Vledder
-!   |   +---+
-!   |   | +---+  Last update: 5 September 2003
-!   +---+ |   |  Release: 5.0
-!         +---+
-!
-! do not use m_xnldata
-use m_constants
-implicit none
-!
-!  0. Update history
-!
-!     25/02/1999  Initial version
-!     14/04/1999  Extra check in GET_LOC if locus exists in internal database
-!     12/10/1999  Error handling improved
-!     15/01/2001  Interface extended with diagonal term
-!     06/05/2002  Criterion f34_mod added to computational procedure
-!     14/08/2002  Integration simplified
-!     22/08/2002  Integration modified depending on actual number of non-zero points
-!     26/09/2002  Boundary check for sector grid activated
-!     15/04/2003  Bug fixed in handling of periodicity
-!                 Nearest bin integration enabled, including diagonal term
-!     25/04/2003  Output to triplet arrays for nearest bin
-!     03/05/2003  Output of triplets for bi-linear interpolation enabled
-!     04/06/2003  Parameter IQ_INT renamed IQ_INTEG
-!     13/06/2003  Test of integration for case of nearest bin interpolation
-!     25/06/2003  Bug fixed in computation of partial derivatives for contribution to
-!                 diagonal term
-!     27/08/2003  Short-cut when number of non-zero points on locus is ZERO
-!     05/09/2003  Switches for test output in nearest bin approach modified
-!     04/07/2025  Remove labelled statements
-!
-!  1. Purpose:
-!
-!     Compute the function T13, defined as a line integral around a locus
-!
-!  2. Method
-!
-!     See Tracy and Resio (1982) and Van Vledder (1999)
-!
-!  3. Parameter list:
-!
-! Type    I/O          Name             Description
-!------------------------------------------------------------------------------
-integer, intent(in) ::  ik1     !    Index of k-component of wave number k1
-integer, intent(in) ::  ia1     !    Index of a-component of wave number k1
-integer, intent(in) ::  ik3     !    Index of k-component of wave number k3
-integer, intent(in) ::  ia3     !    Index of a-component of wave number k3
-real, intent(out)   ::  t13     !    Value of line integral over a specific locus
-real, intent(out)   ::  diagk1  !    Contribution to diagonal term of k1
-real, intent(out)   ::  diagk3  !    Contribution to diagonal term of k3
-!
-!  4. Error messages
-!
-!  5. Called by:
-!
-!     Q_XNL4V4
-!
-!  6. Subroutines used
-!
-!     Q_GETLOCUS
-!     Q_PUT_BTRIPLETS
-!     Q_PUT_NTRIPLETS
-!
-!  7. Remarks
-!
-!     The action density product term is given by:
-!     P = n1.n2.(n3+n4)-(n1+n2).n3.n4
-!
-!     This term is rewritten as:
-!
-!     P = n1.n2.n3 + n1.n2.n4 - n1.n3.n4 - n2.n3.n4
-!       = n1.n3.(n2-n4) + n2.n4.(n1-n3)
-
-!
-!  8. Structure
-!
-!  9. Switches
-!
-!     /S  enable subroutine tracing
-!     /T  enable test output
-!     /N  enable interpolation using nearest point
-!
-! 10. Source code:
-!------------------------------------------------------------------------------
-!     Local variables
-!
-integer iloc          ! counter along locus
-integer ifnd           ! indicator if correct locus is found
-integer ja2,ja2p      ! direction indices for interpolation of k2
-integer jk2,jk2p      ! wave number indices for interpolation of k2
-integer ja4,ja4p      ! direction indices for interpolation of k4
-integer jk4,jk4p      ! wave number indices for interpolation of k4
-integer ikq,iaq       ! counters
-!
-real sumt13           ! sum along locus
-real qn1,qn2,qn3,qn4  ! action densities at wave numbers k1, k2, k3 and k4
-real nprod            ! wave number product
-real t2,t4            ! tail factors for k2 and k4
-real qd1,qd3          ! contribution to diagonal term
-real rterm            ! product term along locus
-!
-real qn13p            ! product of N1 and N3
-real qn13d            ! difference of N1 and N3
-!
-!
-!------------------------------------------------------------------------------
-call q_stack('+q_t13v4')
-!
-t13    = 0.
-diagk1 = 0.
-diagk3 = 0.
-!
-!
-if(ik1==ik3 .and. ia1==ia3) then  ! skip routine if k1=k3
-  call q_stack('-q_t13v4')
-  return
-end if
-!
-!  obtain information requested locus based on a information
-!  about a precomputed locus, as stored in the database file
-!
-call q_getlocus(ik1,ia1,ik3,ia3,ifnd)
-!
-if(ifnd==0 .or. nlocusx==0) then
-  t13 = 0.
-  call q_stack('-q_t13v4')
-  return
-end if
-!---------------------------------------------------------------------------------------
-qn1 = nspec(ik1,ia1)
-qn3 = nspec(ik3,ia3)
-!
-qn13p = qn1*qn3      ! compute product
-qn13d = qn3-qn1      ! compute difference
-!
-sumt13 = 0
-!
-!    3-----------4 ja2p         w1 = (1-wk)*(1-wa)
-!    |    .      |              w2 = wk*(1-wa)
-!    |. . + . . .| wa2   A      w3 = (1-wk)*wa
-!    |    .      |       |      w4 = wk*wa
-!    |    .      |       wa
-!    |    .      |       |
-!    1-----------2 ja2   V
-!   jk2  wk2  jk2p
-!
-!    <-wk->
-!
-!
-t2 = 1.
-t4 = 1.
-!
-!-----------------------------------------------------------------------------------
-!---------------------------------------------------------------------------------------
-!  Main loop over the locus
-!
-do iloc=1,nlocusx
-!
-  jk2  = t_ik2(iloc)
-  jk2p = min(jk2+1,nkq)
-  ja2  = mod(t_ia2(iloc)-1+naq,naq)+1
-  ja2p = mod(t_ia2(iloc)+naq,naq)+1
-!
-! compute tail parameters
-!
-!!  if(iq_geom==1) then
-!!    jk2 = max(1,jk2)
-!!    jk4 = max(1,jk4)
-!!    t2 = max(1.,q_kfac**real(t_ik2(iloc)-nkq))
-!!    t2 = t2**qk_tail
-!!    t4 = max(1.,q_kfac**real(t_ik4(iloc)-nkq))
-!!    t4 = t4**qk_tail
-!!  end if
-!---------------------------------------------------------------------------------------
-!  check boundaries of sector grid
-!
-  if(iq_grid < 3) then
-    ja2  = max(ja2,1)
-    ja2  = min(ja2,naq)
-    ja2p = max(ja2p,1)
-    ja2p = min(ja2p,naq)
-  end if
-!
-  qn2  = (t_w1k2(iloc)*nspec(jk2,ja2)  + t_w2k2(iloc)*nspec(jk2p,ja2) + &
-&         t_w3k2(iloc)*nspec(jk2,ja2p) + t_w4k2(iloc)*nspec(jk2p,ja2p))*t2
-!
-  jk4  = t_ik4(iloc)
-  jk4p = min(jk4+1,nkq)
-  ja4  = mod(t_ia4(iloc)-1+naq,naq)+1
-  ja4p = mod(t_ia4(iloc)+naq,naq)+1
-!
-!  special treatment for sector grids
-!  limit range of indices
-!  QQQ: in fact energy density should be set to ZERO
-!
-  if(iq_grid < 3) then
-    ja4  = max(ja4,1)
-    ja4  = min(ja4,naq)
-    ja4p = max(ja4p,1)
-    ja4p = min(ja4p,naq)
-  end if
-!
-  qn4  = (t_w1k4(iloc)*nspec(jk4,ja4)  + t_w2k4(iloc)*nspec(jk4p,ja4) + &
-&         t_w3k4(iloc)*nspec(jk4,ja4p) + t_w4k4(iloc)*nspec(jk4p,ja4p))*t4
-!
-!-------------------------------------------------------------------------------
-!
-  nprod     = qn13p*(qn4-qn2) + qn2*qn4*qn13d
-  rterm     = t_zz(iloc)
-  t13        = t13 + rterm*nprod
-!
-! output to triplets
-!
-!
-!
-!  add diagonal terms
-!
-!!  qd1    = qn3*(qn4-qn2) + qn2*qn4*qn3
-!!  qd3    = qn1*(qn4-qn2) - qn2*qn4*qn1
-!
-  qd1    = qn3*(qn4-qn2) - qn2*qn4
-  qd3    = qn1*(qn4-qn2) + qn2*qn4
-  diagk1 = diagk1 + qd1*rterm
-  diagk3 = diagk3 + qd3*rterm
-!-----------------------------------------------------------------------------------
-end do
-!
-!!/T if(iq_test>=4) then
-!!/T   write(luq_tst,'(a)') 'Q_T13V4: NSPEC'
-!!/T  do ikq=1,nkq
-!!/T    write(luq_tst,'(100e12.4)') (nspec(ikq,iaq),iaq=1,naq)
-!!T  end do
-!!T end if
-!!if(iq_integ==3) write(luq_int,'(4i3,i5,1000e13.5)') ik1,ia1,ik3,ia3,nloc, &
-!!& t_s(nloc),t13,(dt13(iloc),iloc=1,nloc)
-!
-call q_stack('-q_t13v4')
-!
-return
-end subroutine
-!------------------------------------------------------------------------------
-!>
 !> @brief Compute interpolation weights of locus.
 !>
 !> @details Compute position of wave number in wave number grid.
@@ -6423,6 +5779,7 @@ implicit none
 !     24/06/2003 Range of loop for IK3 made dependent on value of IQ_SYM
 !     25/06/2003 Bug fixed in assigment of contribution of diagonal term
 !     04/07/2025 Remove labelled statements
+!     25/11/2026 Computation moved to C++ (Q_XNL4V4_CPP, xnl4v5_kernel.cpp)
 !
 !  1. Purpose:
 !
@@ -6463,8 +5820,9 @@ integer, intent(out) :: ierr          ! error indicator
 !     Q_STACK
 !     Q_INIT
 !     Q_CTRGRID
-!     Q_T13V4
 !     Q_SEARCHGRID
+!     Q_ERROR
+!     Q_XNL4V4_CPP (C++, xnl4v5_kernel.cpp, declared in xnl4v5_kernel.h)
 !
 !  7. Remarks
 !
@@ -6476,6 +5834,12 @@ integer, intent(out) :: ierr          ! error indicator
 !                cg
 !     N(kx,ky) = -- N(sig,theta)
 !                 k
+!
+!     The grid is selected, computed or read here. The conversion of the
+!     spectrum, the loop over all (k1,k3) combinations (former routines
+!     Q_T13V4 and Q_GETLOCUS) and the conversion of the transfer are done
+!     by the C++ routine Q_XNL4V4_CPP. Screen output inside the loops
+!     (IQ_SCREEN >= 1) is no longer produced.
 !  8. Structure
 !
 !  9. Switches
@@ -6484,55 +5848,36 @@ integer, intent(out) :: ierr          ! error indicator
 !------------------------------------------------------------------------------
 ! local variables
 !---------------------------------------------------------------------------------------
-integer iaq      ! counter for directions
-integer jaq      ! counter for directions
-integer ikq      ! counter for wave numbers
-integer iang     ! counter for directions
-integer ia       ! counter for directions
-integer ik       ! counter for wave numbers
-integer idir1    ! direction in degrees of k1 (for integration test)
-integer idir3    ! direction in degrees of k3 (for integration test)
-real period      ! periodicity for direction, used in conversion of 2-spectra
-real diagk1      ! diagonal term for k1
-real diagk3      ! diagonal term for k3
-!
-real qn_max      ! maximum action density
-real qn_min      ! minimum action density
-!
-real cg(nsig)         ! group velocity for conversion of spectrum and transfer
-!
-integer ia1,ia3,ja3   ! limits for directional loops
-integer jk3           ! start of k3 loop
-integer ik1,ik3       ! counters for wave number loop
-integer nloc          ! number of points on locus
-!
 integer igrid         ! status of grid file
-real t13              ! value of sub-integral
-real k_rat            ! local ratio of wave numbers
-real a_dif            ! directional difference
-real jacobian         ! Jacobian
-real qn1,qn3          ! action densities in k1 and k3
+integer icpp          ! return code of Q_XNL4V4_CPP
 !
-!  testing of diagonal term on a low level
-!
-real diagk1_0         ! saved value of diagk1
-real diagk3_0         ! saved value of diagk3
-real dq1              ! small change in action density of n1
-real dq3              ! small change in action density of n3
-real t13_0            ! Original estimated of diagonal term
-real t13_1,t13_3      ! perturbed estimated of diagonal term
-!
-integer ifil_dir      ! indicator for filtering of directional criterion
-integer ifil_krat     ! indicator for filtering of wave number ratio criterion
-integer ifil_dens     ! indicator for filtering of action density criterion
-integer ifil_tot      ! indicator for filtering due to any criterion
-integer nfil_dir      ! counter to indicate filtering of directional criterion
-integer nfil_krat     ! counter to indicate filtering of wave number criterion
-integer nfil_dens     ! counter to indicate filtering of action density criterion
-!
-integer ntot_conf     ! total number of configurations
-integer ntot_filt     ! total number of filtered configurations
-!
+interface
+  function q_xnl4v4_cpp(aspec, sigma, nkq, naq, q_depth, q_grav, q_scale,   &
+&   q_k, q_dk, q_kpow, q_ad, q_delta, q_deltad, q_kfac, qf_frac, qf_dmax,   &
+&   qf_krat, iq_filt, iq_sym, iq_grid, iq_geom, iaq1, iaq2, iaref, iamax,   &
+&   quad_nloc, quad_ik2, quad_ia2, quad_ik4, quad_ia4, quad_w1k2, quad_w2k2,&
+&   quad_w3k2, quad_w4k2, quad_w1k4, quad_w2k4, quad_w3k4, quad_w4k4,       &
+&   quad_zz, mkq, maq, klocus, xnl, diag) bind(c, name="q_xnl4v4_cpp")     &
+&   result(icpp)
+    use, intrinsic :: iso_c_binding
+    integer(c_int), value, intent(in) :: nkq, naq, iq_filt, iq_sym, iq_grid, &
+&     iq_geom, iaq1, iaq2, iaref, iamax, mkq, maq, klocus
+    real(c_float), value, intent(in) :: q_depth, q_grav, q_scale, q_delta,   &
+&     q_deltad, q_kfac, qf_frac, qf_dmax, qf_krat
+    real(c_float), intent(in) :: aspec(nkq,naq), sigma(nkq), q_k(nkq),      &
+&     q_dk(nkq), q_kpow(nkq), q_ad(naq)
+    integer(c_int), intent(in) :: quad_nloc(mkq,maq),                       &
+&     quad_ik2(mkq,maq,klocus), quad_ia2(mkq,maq,klocus),                   &
+&     quad_ik4(mkq,maq,klocus), quad_ia4(mkq,maq,klocus)
+    real(c_float), intent(in) :: quad_w1k2(mkq,maq,klocus),                 &
+&     quad_w2k2(mkq,maq,klocus), quad_w3k2(mkq,maq,klocus),                 &
+&     quad_w4k2(mkq,maq,klocus), quad_w1k4(mkq,maq,klocus),                 &
+&     quad_w2k4(mkq,maq,klocus), quad_w3k4(mkq,maq,klocus),                 &
+&     quad_w4k4(mkq,maq,klocus), quad_zz(mkq,maq,klocus)
+    real(c_float), intent(out) :: xnl(nkq,naq), diag(nkq,naq)
+    integer(c_int) :: icpp
+  end function q_xnl4v4_cpp
+end interface
 !
 !------------------------------------------------------------------------------
 call q_stack('+q_xnl4v4')
@@ -6599,170 +5944,35 @@ else
 end if
 !
 !------------------------------------------------------------------------------
-!  convert input action density spectrum from A(sigma,theta) -> N(kx,ky)
-!
-do ikq=1,nkq
-  call z_cmpcg(sigma(ikq),q_depth,q_grav,cg(ikq))
-  do iaq=1,naq
-    nspec(ikq,iaq) = aspec(ikq,iaq)/q_k(ikq)*cg(ikq)
-  end do
-end do
-!
+!  Conversion of the spectrum A(sigma,theta) -> N(kx,ky), loop over all
+!  (k1,k3) combinations and conversion of the transfer N(kx,ky) ->
+!  A(sigma,theta) in C++
 !------------------------------------------------------------------------------
 !
-!--------------------------------------------------------------------------------------
-!  integration over all possible configurations
-!--------------------------------------------------------------------------------------
-xnl = 0.
-qn_max = maxval(nspec)
+icpp = q_xnl4v4_cpp(aspec, sigma, nkq, naq, q_depth, q_grav, q_scale,       &
+&   q_k, q_dk, q_kpow, q_ad, q_delta, q_deltad, q_kfac, qf_frac, qf_dmax,   &
+&   qf_krat, iq_filt, iq_sym, iq_grid, iq_geom, iaq1, iaq2, iaref, iamax,   &
+&   quad_nloc, quad_ik2, quad_ia2, quad_ik4, quad_ia4, quad_w1k2, quad_w2k2,&
+&   quad_w3k2, quad_w4k2, quad_w1k4, quad_w2k4, quad_w3k4, quad_w4k4,       &
+&   quad_zz, size(quad_nloc,1), size(quad_nloc,2), size(quad_ik2,3),        &
+&   xnl, diag)
 !
-!--------------------------------------------------------------------------------------
-do ik1 = 1,nkq
-  if(iq_screen >= 1) write(iscreen,'(a,2i4,e12.3)') 'Q_XNL4V4: k1 nk d:',ik1,nkq,q_depth
-  jk3 = ik1
-  if(iq_sym==0) jk3 = 1
+if(icpp /= 0) then
 !
-  do ia1 = iaq1,iaq2          ! loop over selected part of grid, set in q_init
+!  Locus address error, reported as before by Q_GETLOCUS (called from
+!  Q_T13V4)
 !
-    qn1 = nspec(ik1,ia1)
-!
-    do ik3 = jk3,nkq           ! compute only half-plane
-      do ia3 = 1,naq           ! loop over all possible wave directions
-        qn3 = nspec(ik3,ia3)
-!
-        if(iq_screen>=3) write(iscreen,'(a,4i4)') 'Q_XNL4V4: ik1 ia1 ik3 ia3:',ik1,ia1,ik3,ia3
-!
-!  computes distances in wave number space
-!
-        a_dif = 180. - abs(180. - abs(q_ad(ia1) - q_ad(ia3)))
-        k_rat = max(q_k(ik1)/q_k(ik3), q_k(ik3)/q_k(ik1))
-        qn_min = qf_frac*qn_max/(q_k(ik3)/q_k(1))**7.5
-        qn_min = qf_frac*qn_max*q_kpow(ik3)
-!
-        ifil_dir  = 0
-        ifil_krat = 0
-        ifil_dens = 0
-        ifil_tot  = 0
-!
-!  perform filtering
-!
-!  directional difference
-!
-        if(a_dif > qf_dmax) then
-          ifil_dir = 1
-        end if
-!
-!  wave number ratio
-!
-        if(k_rat > qf_krat) then
-          ifil_krat = 1
-        end if
-!
-!  energy density filtering
-!
-        if(qn1 < qn_min .and. qn3 < qn_min) then
-          ifil_dens = 1
-        end if
-!
-!
-        if(ifil_dir==0 .and. ifil_krat==0 .and. ifil_dens==0 .or. iq_filt==0) then
-!?        if(a_dif < qf_dmax .and. k_rat < qf_krat .or. iq_filt==0) then
-!
-!  perform integration along locus
-!
-          call q_t13v4(ik1,ia1,ik3,ia3,t13,diagk1,diagk3)
-!
-!
-          if(iq_err /= 0) then
-            call q_stack('-q_xnl4v4')
-            return
-          end if
-!
-!  check contribution T13 with the computed with triplet method
-!
-!!/R           qt13 = 0.
-!!/R           do iqtr = 1,ktriplets
-!!/R             qt13 = qt13 + w_qtr(iqtr)*nspec(i_qtr(iqtr,1),i_qtr(iqtr,2))* &
-!!/R &                   nspec(i_qtr(iqtr,3),i_qtr(iqtr,4))*nspec(i_qtr(iqtr,5),i_qtr(iqtr,6))
-!!/R           end do
-!!/R           write(iscreen,*) 'CHECK T13 QT13:',t13,qt13
-!
-!
-!  take care of additional scale factor aring from search of nearest grid
-!
-          t13    = t13*q_scale
-          diagk1 = diagk1*q_scale
-          diagk3 = diagk3*q_scale
-!
-!  take care of symmetric storing of interactions
-!  and factor 2 due to symmetry (if activated)
-!
-          if(iq_sym==1) then
-            t13 = 2.*t13
-            diagk1 = 2.*diagk1
-            diagk3 = 2.*diagk3
-          end if
-!
-          ja3 = ia3
-          if(iq_grid==1 .and. ia3 < iaref) ja3 = naq-ia1+1
-          xnl(ik1,ia1)  = xnl(ik1,ia1) + t13*q_k(ik3)*q_delta*q_dk(ik3)
-          if(iq_sym==1) xnl(ik3,ja3)  = xnl(ik3,ja3) - t13*q_k(ik1)*q_delta*q_dk(ik1)
-!
-!  add diagonal term
-!
-          diag(ik1,ia1) = diag(ik1,ia1) + diagk1*q_k(ik3)*q_delta*q_dk(ik3)
-          if(iq_sym==1) diag(ik3,ia3) = diag(ik3,ia3) - diagk3*q_k(ik1)*q_delta*q_dk(ik1)
-!
-        end if
-!
-!!/F         write(luq_fil,'(a,4i3,3e11.3,2f7.2,4i2)') &
-!!/F &      'ik1 ia1 ik3 ia3 n1 n3 t13 adif krat fil1/2/3:', &
-!!/F &       ik1,ia1,ik3,ia3,qn1,qn3,t13,a_dif,k_rat,&
-!!/F &       ifil_dir,ifil_krat,ifil_dens,ifil_tot
-      end do
-    end do
-  end do
-end do
-!
-!
-!
-!
-!
-! write number of triplets that have been written
-!
-!
-!------------------------------------------------------------------------------
-! in the case of a symmetric sector, copy results to other part
-!
-! Examples: naq=5, iaref=3: 1,2,3,4,5 ->   Q(1)=Q(5)
-!                                          Q(2)=Q(4)
-!                                          Q(3)=Q(3)
-!                                                     iaq+jaq=naq+1
-!           naq=6, iaref=4: 1,2,3,4,5,6 -> Q(1)=Q(6)
-!                                          Q(2)=Q(5)
-!                                          Q(3)=Q(4)
-!
-if(iq_grid==1) then
-  do ikq = 1,nkq
-    do iaq=iaref,naq
-      jaq = naq+1-iaq
-      xnl(ikq,jaq) = xnl(ikq,iaq)
-    end do
-  end do
+  call q_stack('+q_t13v4')
+  call q_stack('+q_getlocus')
+  call q_error('e','MEMORY','Incorrect addres')
+  call q_stack('-q_getlocus')
+  call q_stack('-q_t13v4')
+  call q_stack('-q_xnl4v4')
+  return
 end if
 !
-!------------------------------------------------------------------------------
 if(iq_screen>=2) write(iscreen,'(a)') 'Q_XNL4V4: Main computation ended'
 !
-!  Convert transfer from (kx,ky) grid to (sigma,theta) grid
-!
-do ikq=1,nkq
-  jacobian = q_k(ikq)/cg(ikq)
-  do iaq=1,naq
-    xnl(ikq,iaq) = xnl(ikq,iaq)*jacobian
-  end do
-end do
-!                                                   !
 call q_stack('-q_xnl4v4')
 !
 return

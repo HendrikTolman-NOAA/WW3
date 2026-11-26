@@ -1,5 +1,5 @@
 name: nl2_cpp_vs_fortran
-# Checks that the C++ Xnl kernel (xnl4v5_kernel.cpp, called from Q_XNL4V4 in mod_xnl4v5.f90)
+# Checks that the C++ Xnl library (xnl4v5_*.cpp, called from mod_xnl4v5.f90)
 # gives bit-identical results to the original all-Fortran mod_xnl4v5.f90.
 #
 # For each regression test using NL2, WW3 is built and run twice from the same checkout:
@@ -13,6 +13,8 @@ on:
       - 'model/src/mod_xnl4v5.f90'
       - 'model/src/xnl4v5_kernel.cpp'
       - 'model/src/xnl4v5_kernel.h'
+      - 'model/src/xnl4v5_physics.cpp'
+      - 'model/src/xnl4v5_physics.h'
       - 'model/src/CMakeLists.txt'
       - '.github/workflows/nl2_cpp_vs_fortran.yml'
   push:
@@ -20,6 +22,8 @@ on:
       - 'model/src/mod_xnl4v5.f90'
       - 'model/src/xnl4v5_kernel.cpp'
       - 'model/src/xnl4v5_kernel.h'
+      - 'model/src/xnl4v5_physics.cpp'
+      - 'model/src/xnl4v5_physics.h'
       - 'model/src/CMakeLists.txt'
       - '.github/workflows/nl2_cpp_vs_fortran.yml'
 
@@ -96,8 +100,9 @@ jobs:
           # WW3 default). WRT1 and WRT3 are local variants created in the
           # create-nl2-test-variants step: IQTYPE 1 (deep water), and IQTYPE 3
           # (finite depth) at 15 m depth. A run with deliberately perturbed C++
-          # NL2 code (T13 times 1.01) changed out_grd.ww3, out_pnt.ww3 and
-          # tab49.ww3 in each test.
+          # NL2 code (T13 times 1.01 in the kernel, or the coupling coefficient
+          # times 1.01 in the physics functions) changed out_grd.ww3,
+          # out_pnt.ww3 and tab49.ww3 in each test.
           # name : work directory suffix, switch : -s option, input : -i option.
           - { test: ww3_ts1, name: ST4_WRT, switch: ST4_WRT }
           - { test: ww3_ts1, name: WRT1, switch: ST4_WRT, input: input_WRT1 }

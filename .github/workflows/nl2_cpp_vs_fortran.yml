@@ -1,5 +1,5 @@
 name: nl2_cpp_vs_fortran
-# Checks that the C++ NL2 kernel (NL2_ww3.cpp, called from Q_XNL4V4 in mod_xnl4v5.f90)
+# Checks that the C++ Xnl kernel (xnl4v5_kernel.cpp, called from Q_XNL4V4 in mod_xnl4v5.f90)
 # gives bit-identical results to the original all-Fortran mod_xnl4v5.f90.
 #
 # For each regression test using NL2, WW3 is built and run twice from the same checkout:
@@ -11,15 +11,15 @@ on:
   pull_request:
     paths:
       - 'model/src/mod_xnl4v5.f90'
-      - 'model/src/NL2_ww3.cpp'
-      - 'model/src/NL2_ww3.h'
+      - 'model/src/xnl4v5_kernel.cpp'
+      - 'model/src/xnl4v5_kernel.h'
       - 'model/src/CMakeLists.txt'
       - '.github/workflows/nl2_cpp_vs_fortran.yml'
   push:
     paths:
       - 'model/src/mod_xnl4v5.f90'
-      - 'model/src/NL2_ww3.cpp'
-      - 'model/src/NL2_ww3.h'
+      - 'model/src/xnl4v5_kernel.cpp'
+      - 'model/src/xnl4v5_kernel.h'
       - 'model/src/CMakeLists.txt'
       - '.github/workflows/nl2_cpp_vs_fortran.yml'
 

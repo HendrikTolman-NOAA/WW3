@@ -3,24 +3,26 @@
  *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
  *       +--------------------------------------------------------+
  *
- * @file NL2_ww3.h
- * @brief Declarations of the single-point interaction kernel of the NL2
- * (WRT, exact) nonlinear four-wave interaction source term for WAVEWATCH IV
- * (WW4).
- * @details Declares the C++20 kernel of the Webb-Resio-Tracy (WRT) method as
- * implemented by G. Ph. van Vledder in the Xnl library (mod_xnl4v5.f90) used
- * by WAVEWATCH III (WW3) for the NL2 option, and its C-compatible interface
- * called from Q_XNL4V4 in mod_xnl4v5.f90. Implementations are in
- * NL2_ww3.cpp. The ww4_nl2 routine uses descriptive variable names. The
- * extern "C" wrapper keeps the Xnl Fortran names (aspec, q_k, quad_zz, ...)
- * for easy cross-referencing with mod_xnl4v5.f90.
+ * @file xnl4v5_kernel.h
+ * @brief Declarations of the single-point interaction kernel of the Xnl
+ * library for the WRT (exact) nonlinear four-wave interactions.
+ * @details Declares the C++20 kernel of the Webb-Resio-Tracy (WRT) method of
+ * the Xnl library by G. Ph. van Vledder (mod_xnl4v5.f90), used by WAVEWATCH
+ * III (WW3) for the NL2 source term, and its C-compatible interface called
+ * from Q_XNL4V4 in mod_xnl4v5.f90. The Xnl library is kept as a separate
+ * library (namespace xnl4v5, CMake target xnl4v5_lib), independent of the
+ * WW3 and WW4 source term code. Implementations are in xnl4v5_kernel.cpp.
+ * The xnl4v5 routine uses descriptive variable names. The extern "C" wrapper
+ * keeps the Xnl Fortran names (aspec, q_k, quad_zz, ...) for easy
+ * cross-referencing with mod_xnl4v5.f90.
  *
- * This is the first stage of the conversion of NL2. The kernel covers the
- * computations of Q_XNL4V4, Q_T13V4 and Q_GETLOCUS (and the service routines
- * Z_CMPCG and Z_WNUMB): the nonlinear transfer and its diagonal term for a
- * given spectrum, using an interaction grid that is computed (or read from a
- * BQF file) by the Fortran code. Grid generation, grid selection, depth
- * scaling, file I/O, logging and error handling remain in Fortran for now.
+ * This is the first stage of the translation of the Xnl library. The kernel
+ * covers the computations of Q_XNL4V4, Q_T13V4 and Q_GETLOCUS (and the
+ * service routines Z_CMPCG and Z_WNUMB): the nonlinear transfer and its
+ * diagonal term for a given spectrum, using an interaction grid that is
+ * computed (or read from a BQF file) by the Fortran code. Grid generation,
+ * grid selection, depth scaling, file I/O, logging and error handling remain
+ * in Fortran for now.
  *
  * Method: the rate of change of action density N_1 at wavenumber k_1 is
  * written as dN_1/dt = 2 int T(k_1, k_3) dk_3, where the function T13 is a
@@ -48,32 +50,43 @@
  * A(sigma,theta), stored in the same order. Note that this is the transposed
  * order of the WW3 spectra.
  *
- * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
- * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
- * Weather Service.
+ * Attribution: original Xnl library (GurboQuad version 5.03), 1999-2003,
+ * Gerbrant Ph. van Vledder, ALKYON Hydraulic Consultancy & Research. No
+ * separate copyright statement was included in the original source. The
+ * author shared the code through WAVEWATCH III (WW3) before WW3 was licensed;
+ * the history of the code is documented in the WW3 repository.
+ *
+ * The C++ code is a straight translation of the Fortran code, without further
+ * development or refactoring of the method: the computations and their order
+ * are unchanged, and the results are bitwise identical to those of the
+ * Fortran code. The code is only organized in C++ functions and structures
+ * as required by the C++ coding rules, and variables that were computed but
+ * not used are omitted.
+ *
  * The National Weather Service (NWS) often uses Generative SI (GenSI, formerly
  * identified as GenAI) for code development and refactoring. Whenever GenSI is
  * used, NWS requires a full human review of code before it is added to its
  * repositories.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
- * @author Code Heritage: Converted and adapted from the Xnl library
- * mod_xnl4v5.f90 (Q_XNL4V4, Q_T13V4, Q_GETLOCUS) and serv_xnl4v5.f90
- * (Z_CMPCG, Z_WNUMB) by Gerbrant Ph. van Vledder, as used in WAVEWATCH III
- * (WW3) w3snl2md.F90 by Hendrik L. Tolman and G. Ph. van Vledder.
+ * @author Code Heritage: Translated from the Xnl library by Gerbrant Ph. van
+ * Vledder: mod_xnl4v5.f90 (Q_XNL4V4, Q_T13V4, Q_GETLOCUS) and serv_xnl4v5.f90
+ * (Z_CMPCG, Z_WNUMB), as included in WAVEWATCH III (WW3) for the NL2 source
+ * term (w3snl2md.F90 by Hendrik L. Tolman and G. Ph. van Vledder).
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 
-#ifndef WW4_NL2_WW3_H
-#define WW4_NL2_WW3_H
+#ifndef XNL4V5_KERNEL_H
+#define XNL4V5_KERNEL_H
 
 // System
 #include <cstddef>
 #include <cstdint>
 #include <span>
 
-namespace ww4_nl2 {
+namespace xnl4v5 {
 
 // --- WavenumberGrid ---------------------------------------------------------
 /**
@@ -166,10 +179,11 @@ enum class KernelStatus : std::uint8_t {
  * xnl).
  * @param[out] diagonal Diagonal term (size nk * na, diag).
  * @return KernelStatus::kSuccess, or the error found.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 [[nodiscard]] KernelStatus compute_q_xnl4v4(
     std::span<const float> action_density,
@@ -178,16 +192,16 @@ enum class KernelStatus : std::uint8_t {
     const InteractionGrid &interactions, const KernelSettings &settings,
     std::span<float> transfer, std::span<float> diagonal) noexcept;
 
-} // namespace ww4_nl2
+} // namespace xnl4v5
 
 // --- C-compatible ABI interfaces for Fortran interoperability ---------------
 extern "C" {
 
 // --- q_xnl4v4_cpp -----------------------------------------------------------
 /**
- * @brief Fortran interface to ww4_nl2::compute_q_xnl4v4.
+ * @brief Fortran interface to xnl4v5::compute_q_xnl4v4.
  * @details Wraps the raw Fortran arrays in non-owning spans and forwards to
- * ww4_nl2::compute_q_xnl4v4. Bound in mod_xnl4v5.f90 as
+ * xnl4v5::compute_q_xnl4v4. Bound in mod_xnl4v5.f90 as
  * BIND(C, name="q_xnl4v4_cpp"). Arguments have the names of the Xnl library
  * variables.
  * @param[in] aspec Action density spectrum (size nkq * naq).
@@ -235,10 +249,11 @@ extern "C" {
  * @param[out] xnl Nonlinear transfer (size nkq * naq).
  * @param[out] diag Diagonal term (size nkq * naq).
  * @return 0 on success, 1 if a locus direction entry exceeds iamax.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 int q_xnl4v4_cpp(const float *aspec, const float *sigma, int nkq, int naq,
                  float q_depth, float q_grav, float q_scale, const float *q_k,
@@ -257,4 +272,4 @@ int q_xnl4v4_cpp(const float *aspec, const float *sigma, int nkq, int naq,
 
 } // extern "C"
 
-#endif // WW4_NL2_WW3_H
+#endif // XNL4V5_KERNEL_H

@@ -5779,7 +5779,7 @@ implicit none
 !     24/06/2003 Range of loop for IK3 made dependent on value of IQ_SYM
 !     25/06/2003 Bug fixed in assigment of contribution of diagonal term
 !     04/07/2025 Remove labelled statements
-!     25/11/2026 Computation moved to C++ (Q_XNL4V4_CPP, NL2_ww3.cpp)
+!     25/11/2026 Computation moved to C++ (Q_XNL4V4_CPP, xnl4v5_kernel.cpp)
 !
 !  1. Purpose:
 !
@@ -5822,7 +5822,7 @@ integer, intent(out) :: ierr          ! error indicator
 !     Q_CTRGRID
 !     Q_SEARCHGRID
 !     Q_ERROR
-!     Q_XNL4V4_CPP (C++, NL2_ww3.cpp, declared in NL2_ww3.h)
+!     Q_XNL4V4_CPP (C++, xnl4v5_kernel.cpp, declared in xnl4v5_kernel.h)
 !
 !  7. Remarks
 !

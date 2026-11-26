@@ -3,18 +3,18 @@
  *       | WAVEWATCH IV, open source, code management by NOAA/NWS |
  *       +--------------------------------------------------------+
  *
- * @file NL2_ww3.cpp
- * @brief Implementation of the single-point interaction kernel of the NL2
- * (WRT, exact) nonlinear four-wave interaction source term for WAVEWATCH IV
- * (WW4).
- * @details Pure C++20 implementation of the kernel of the Webb-Resio-Tracy
- * method of the Xnl library (Q_XNL4V4, Q_T13V4, Q_GETLOCUS, Z_CMPCG and
- * Z_WNUMB), with a C-compatible interface called from Q_XNL4V4 in
- * mod_xnl4v5.f90. First stage of the WW4 conversion of the NL2 source term.
+ * @file xnl4v5_kernel.cpp
+ * @brief Implementation of the single-point interaction kernel of the Xnl
+ * library for the WRT (exact) nonlinear four-wave interactions.
+ * @details Pure C++20 translation of the kernel of the Webb-Resio-Tracy method
+ * of the Xnl library by G. Ph. van Vledder (Q_XNL4V4, Q_T13V4, Q_GETLOCUS,
+ * Z_CMPCG and Z_WNUMB), with a C-compatible interface called from Q_XNL4V4 in
+ * mod_xnl4v5.f90. First stage of the translation of the Xnl library, which
+ * is kept as a separate library (namespace xnl4v5, CMake target xnl4v5_lib).
  * The method, the input and output spectrum and what remains in Fortran are
- * described in NL2_ww3.h. Each routine has its full documentation (details,
- * contracts and heritage) in front of its definition, and a shorter version
- * with its declaration in NL2_ww3.h.
+ * described in xnl4v5_kernel.h. Each routine has its full documentation
+ * (details, contracts and heritage) in front of its definition, and a shorter
+ * version with its declaration in xnl4v5_kernel.h.
  *
  * References:
  * - Hasselmann, K., 1962: On the non-linear energy transfer in a gravity wave
@@ -38,25 +38,36 @@
  *   Coastal Eng., 53, 223-242.
  * - WAVEWATCH III Development Group, WAVEWATCH III user manual, section NL2.
  *
- * @copyright © 2026 National Weather Service, National Oceanic and Atmospheric
- * Administration. WAVEWATCH IV (TM) and WW4 (TM) are trademarks of the National
- * Weather Service.
+ * Attribution: original Xnl library (GurboQuad version 5.03), 1999-2003,
+ * Gerbrant Ph. van Vledder, ALKYON Hydraulic Consultancy & Research. No
+ * separate copyright statement was included in the original source. The
+ * author shared the code through WAVEWATCH III (WW3) before WW3 was licensed;
+ * the history of the code is documented in the WW3 repository.
+ *
+ * The C++ code is a straight translation of the Fortran code, without further
+ * development or refactoring of the method: the computations and their order
+ * are unchanged, and the results are bitwise identical to those of the
+ * Fortran code. The code is only organized in C++ functions and structures
+ * as required by the C++ coding rules, and variables that were computed but
+ * not used are omitted.
+ *
  * The National Weather Service (NWS) often uses Generative SI (GenSI, formerly
  * identified as GenAI) for code development and refactoring. Whenever GenSI is
  * used, NWS requires a full human review of code before it is added to its
  * repositories.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
- * @author Code Heritage: Converted and adapted from the Xnl library
- * mod_xnl4v5.f90 (Q_XNL4V4, Q_T13V4, Q_GETLOCUS) and serv_xnl4v5.f90
- * (Z_CMPCG, Z_WNUMB) by Gerbrant Ph. van Vledder, as used in WAVEWATCH III
- * (WW3) w3snl2md.F90 by Hendrik L. Tolman and G. Ph. van Vledder.
+ * @author Code Heritage: Translated from the Xnl library by Gerbrant Ph. van
+ * Vledder: mod_xnl4v5.f90 (Q_XNL4V4, Q_T13V4, Q_GETLOCUS) and serv_xnl4v5.f90
+ * (Z_CMPCG, Z_WNUMB), as included in WAVEWATCH III (WW3) for the NL2 source
+ * term (w3snl2md.F90 by Hendrik L. Tolman and G. Ph. van Vledder).
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 
 // Local
-#include "NL2_ww3.h"
+#include "xnl4v5_kernel.h"
 
 // System
 #include <algorithm>
@@ -69,7 +80,7 @@
 #include <span>
 #include <vector>
 
-namespace ww4_nl2 {
+namespace xnl4v5 {
 
 namespace {
 
@@ -97,10 +108,11 @@ constexpr float kHalfCircleDeg = 180.0F;
  * NaN, and -infinity for an empty array.
  * @param values The array.
  * @return The maximum value.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 float fortran_maxval(const std::span<const float> values) noexcept {
   float result = -std::numeric_limits<float>::infinity();
@@ -130,10 +142,11 @@ float fortran_maxval(const std::span<const float> values) noexcept {
  * x**2 * x**4 and can differ in the last bit.
  * @param value The value x.
  * @return The sixth power x**6.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 constexpr float sixth_power(const float value) noexcept {
   const float power2 = value * value;
@@ -151,11 +164,12 @@ constexpr float sixth_power(const float value) noexcept {
  * @param depth Water depth d.
  * @param gravity Acceleration of gravity g.
  * @return The wavenumber.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Z_WNUMB by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 float compute_z_wnumb(const float radian_frequency, const float depth,
                       const float gravity) noexcept {
@@ -186,11 +200,12 @@ float compute_z_wnumb(const float radian_frequency, const float depth,
  * @param depth Water depth d.
  * @param gravity Acceleration of gravity g.
  * @return The group velocity.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Z_CMPCG by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 float compute_z_cmpcg(const float radian_frequency, const float depth,
                       const float gravity) noexcept {
@@ -309,10 +324,11 @@ struct KernelContext {
  * @param reference_direction Reference direction IAREF.
  * @param index Direction index of the reference locus point.
  * @return The transformed direction index.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 int direction_index(const int ibeta, const int reference_direction,
                     const int index) noexcept {
@@ -329,10 +345,11 @@ int direction_index(const int ibeta, const int reference_direction,
  * @param context Kernel context.
  * @param direction 1-based direction index.
  * @return The rotation index.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 int reference_rotation(const KernelContext &context,
                        const int direction) noexcept {
@@ -366,11 +383,12 @@ struct LocusEntry {
  * @param ik3 1-based wavenumber index of k3.
  * @param ia3 1-based direction index of k3.
  * @return The locus entry and the (shifted) direction indices.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Q_GETLOCUS by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 LocusEntry locus_entry(const KernelContext &context, const int ik1,
                        const int ia1, const int ik3, const int ia3) noexcept {
@@ -443,11 +461,12 @@ struct LocusTransform {
  * @param k_offset Shift of the wavenumber indices.
  * @param[out] transform The selected transformation.
  * @return False if none of the six cases applies (k1 = k3).
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Q_GETLOCUS by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 bool select_transform(const KernelContext &context, const int ik1,
                       const int ia1, const int ik3, const int ia3,
@@ -497,11 +516,12 @@ bool select_transform(const KernelContext &context, const int ik1,
  * @param ui Index of the point in the transformed locus.
  * @param swap Exchange the weights of the direction neighbours.
  * @param[out] locus Transformed locus.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Q_GETLOCUS by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 void copy_weights(const InteractionGrid &quad, const std::size_t i,
                   const std::size_t ui, const bool swap,
@@ -535,11 +555,12 @@ void copy_weights(const InteractionGrid &quad, const std::size_t i,
  * @param num_points Number of points on the locus.
  * @param transform The transformation.
  * @param[out] locus Transformed locus (indices, directions and weights).
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Q_GETLOCUS by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 void transform_locus(const KernelContext &context, const std::size_t entry,
                      const int num_points, const LocusTransform &transform,
@@ -599,11 +620,12 @@ void transform_locus(const KernelContext &context, const std::size_t entry,
  * @return The result of the lookup.
  * @pre The reference loci are valid for the grid.
  * @post If kFound is returned, locus holds the transformed locus.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Q_GETLOCUS by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 LocusResult get_locus(const KernelContext &context, const int ik1,
                       const int ia1, const int ik3, const int ia3,
@@ -669,11 +691,12 @@ struct T13Result {
  * @param a_index 1-based lower direction index (before periodicity).
  * @param weights Weights of (k, a), (k + 1, a), (k, a + 1), (k + 1, a + 1).
  * @return The interpolated action density.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Q_T13V4 by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 float density_at(const KernelContext &context, const int k_index,
                  const int a_index,
@@ -713,11 +736,12 @@ float density_at(const KernelContext &context, const int k_index,
  * @param locus Work space for the transformed locus.
  * @param[out] result Line integral and diagonal terms.
  * @return The result of the locus lookup (kInvalidAddress on error).
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Q_T13V4 by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 LocusResult compute_q_t13v4(const KernelContext &context, const int ik1,
                             const int ia1, const int ik3, const int ia3,
@@ -783,11 +807,12 @@ LocusResult compute_q_t13v4(const KernelContext &context, const int ik1,
  * @param ia3 1-based direction index of k3.
  * @param density_max Maximum of N(k,theta).
  * @return True if the combination is computed.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Q_XNL4V4 by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 bool is_computed(const KernelContext &context, const int ik1, const int ia1,
                  const int ik3, const int ia3,
@@ -829,11 +854,12 @@ bool is_computed(const KernelContext &context, const int ik1, const int ia1,
  * @param t13_result Line integral and diagonal terms.
  * @param[in,out] transfer Transfer of N(k,theta).
  * @param[in,out] diagonal Diagonal term.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Q_XNL4V4 by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 void add_contribution(const KernelContext &context, const int ik1,
                       const int ia1, const int ik3, const int ia3,
@@ -886,11 +912,12 @@ void add_contribution(const KernelContext &context, const int ik1,
  * @param[in,out] transfer Transfer of N(k,theta).
  * @param[in,out] diagonal Diagonal term.
  * @return False on a locus address error.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Q_XNL4V4 by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 bool add_k1_interactions(const KernelContext &context, const int ik1,
                          const int ia1, const float density_max,
@@ -963,11 +990,12 @@ bool add_k1_interactions(const KernelContext &context, const int ik1,
  * have size nk * na; the QUAD arrays have the sizes in interactions and hold
  * loci computed for this grid.
  * @post On success, transfer and diagonal are fully populated.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @author Code Heritage: Converted from Xnl Q_XNL4V4 by G. Ph. van Vledder.
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 KernelStatus compute_q_xnl4v4(const std::span<const float> action_density,
                               const std::span<const float> radian_frequency,
@@ -1039,18 +1067,18 @@ KernelStatus compute_q_xnl4v4(const std::span<const float> action_density,
   return KernelStatus::kSuccess;
 }
 
-} // namespace ww4_nl2
+} // namespace xnl4v5
 
 // --- C-compatible ABI interfaces for Fortran interoperability ---------------
 extern "C" {
 
 // --- q_xnl4v4_cpp -----------------------------------------------------------
 /**
- * @brief Fortran interface to ww4_nl2::compute_q_xnl4v4.
+ * @brief Fortran interface to xnl4v5::compute_q_xnl4v4.
  * @details Wraps the raw Fortran arrays in non-owning spans and forwards to
- * ww4_nl2::compute_q_xnl4v4. Bound in mod_xnl4v5.f90 as
+ * xnl4v5::compute_q_xnl4v4. Bound in mod_xnl4v5.f90 as
  * BIND(C, name="q_xnl4v4_cpp"). Arguments have the names of the Xnl library
- * variables, see NL2_ww3.h.
+ * variables, see xnl4v5_kernel.h.
  * @param[in] aspec Action density spectrum (size nkq * naq).
  * @param[in] sigma Radian frequencies (size nkq).
  * @param[in] nkq Number of wavenumbers.
@@ -1097,10 +1125,11 @@ extern "C" {
  * @param[out] diag Diagonal term (size nkq * naq).
  * @return 0 on success, 1 if a locus direction entry exceeds iamax.
  * @pre All arrays are allocated with the sizes given above.
- * @author Main Author(s): Aldgisl (AI Persona), Hendrik L. Tolman
+ * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
+ * (AI Persona) and Hendrik L. Tolman (C++ translation)
  * @author Contributors: Kiro (Agentic AI/SI)
  * @date Initial: 2026-11-25
- * @date Last update: 2026-11-25
+ * @date Last update: 2026-11-26
  */
 int q_xnl4v4_cpp(const float *const aspec, const float *const sigma,
                  const int nkq, const int naq, const float q_depth,
@@ -1128,7 +1157,7 @@ int q_xnl4v4_cpp(const float *const aspec, const float *const sigma,
   const auto nl = static_cast<std::size_t>(klocus);
   const std::size_t n_quad = mk * ma * nl;
 
-  const ww4_nl2::WavenumberGrid grid{
+  const xnl4v5::WavenumberGrid grid{
       .wavenumber = std::span<const float>(q_k, nk),
       .wavenumber_step = std::span<const float>(q_dk, nk),
       .filter_power = std::span<const float>(q_kpow, nk),
@@ -1137,7 +1166,7 @@ int q_xnl4v4_cpp(const float *const aspec, const float *const sigma,
       .direction_step_deg = q_deltad,
       .wavenumber_factor = q_kfac,
   };
-  const ww4_nl2::InteractionGrid interactions{
+  const xnl4v5::InteractionGrid interactions{
       .num_k_entries = mk,
       .num_a_entries = ma,
       .num_locus_points = nl,
@@ -1156,7 +1185,7 @@ int q_xnl4v4_cpp(const float *const aspec, const float *const sigma,
       .k4_weight4 = std::span<const float>(quad_w4k4, n_quad),
       .locus_factor = std::span<const float>(quad_zz, n_quad),
   };
-  const ww4_nl2::KernelSettings settings{
+  const xnl4v5::KernelSettings settings{
       .use_filter = iq_filt,
       .use_symmetry = iq_sym,
       .grid_type = iq_grid,
@@ -1170,7 +1199,7 @@ int q_xnl4v4_cpp(const float *const aspec, const float *const sigma,
       .filter_max_k_ratio = qf_krat,
       .grid_scale = q_scale,
   };
-  const ww4_nl2::KernelStatus status = ww4_nl2::compute_q_xnl4v4(
+  const xnl4v5::KernelStatus status = xnl4v5::compute_q_xnl4v4(
       std::span<const float>(aspec, nk * na), std::span<const float>(sigma, nk),
       na, q_depth, q_grav, grid, interactions, settings,
       std::span<float>(xnl, nk * na), std::span<float>(diag, nk * na));

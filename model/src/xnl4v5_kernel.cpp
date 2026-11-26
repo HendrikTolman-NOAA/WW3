@@ -7,14 +7,15 @@
  * @brief Implementation of the single-point interaction kernel of the Xnl
  * library for the WRT (exact) nonlinear four-wave interactions.
  * @details Pure C++20 translation of the kernel of the Webb-Resio-Tracy method
- * of the Xnl library by G. Ph. van Vledder (Q_XNL4V4, Q_T13V4, Q_GETLOCUS,
- * Z_CMPCG and Z_WNUMB), with a C-compatible interface called from Q_XNL4V4 in
- * mod_xnl4v5.f90. First stage of the translation of the Xnl library, which
- * is kept as a separate library (namespace xnl4v5, CMake target xnl4v5_lib).
- * The method, the input and output spectrum and what remains in Fortran are
- * described in xnl4v5_kernel.h. Each routine has its full documentation
- * (details, contracts and heritage) in front of its definition, and a shorter
- * version with its declaration in xnl4v5_kernel.h.
+ * of the Xnl library by G. Ph. van Vledder (Q_XNL4V4, Q_T13V4, Q_GETLOCUS),
+ * with a C-compatible interface called from Q_XNL4V4 in mod_xnl4v5.f90. The
+ * service routines Z_CMPCG and Z_WNUMB, translated in the first stage, are in
+ * xnl4v5_physics.cpp since the second stage. First stage of the translation of
+ * the Xnl library, which is kept as a separate library (namespace xnl4v5, CMake
+ * target xnl4v5_lib). The method, the input and output spectrum and what
+ * remains in Fortran are described in xnl4v5_kernel.h. Each routine has its
+ * full documentation (details, contracts and heritage) in front of its
+ * definition, and a shorter version with its declaration in xnl4v5_kernel.h.
  *
  * References:
  * - Hasselmann, K., 1962: On the non-linear energy transfer in a gravity wave
@@ -68,6 +69,7 @@
 
 // Local
 #include "xnl4v5_kernel.h"
+#include "xnl4v5_physics.h"
 
 // System
 #include <algorithm>
@@ -85,12 +87,6 @@ namespace xnl4v5 {
 namespace {
 
 // --- Constants --------------------------------------------------------------
-/// Value returned by Z_WNUMB and Z_CMPCG for zero depth or frequency.
-constexpr float kInvalidValue = -10.0F;
-
-/// k d above which Z_CMPCG uses the deep water group velocity.
-constexpr float kDeepWaterLimit = 30.0F;
-
 /// Mirror offset in the direction indices of transformed loci (IMIRROR).
 constexpr int kMirrorOffset = 1;
 
@@ -152,72 +148,6 @@ constexpr float sixth_power(const float value) noexcept {
   const float power2 = value * value;
   const float power3 = power2 * value;
   return power3 * power3;
-}
-
-// --- compute_z_wnumb --------------------------------------------------------
-/**
- * @brief Wavenumber from radian frequency and depth (Z_WNUMB).
- * @details Explicit approximation of the linear dispersion relation with a
- * polynomial in y = sigma^2 d / g, evaluated with Horner's scheme in the
- * order of the Fortran expression. Returns -10 for zero depth or frequency.
- * @param radian_frequency Radian frequency sigma.
- * @param depth Water depth d.
- * @param gravity Acceleration of gravity g.
- * @return The wavenumber.
- * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
- * (AI Persona) and Hendrik L. Tolman (C++ translation)
- * @author Contributors: Kiro (Agentic AI/SI)
- * @author Code Heritage: Converted from Xnl Z_WNUMB by G. Ph. van Vledder.
- * @date Initial: 2026-11-25
- * @date Last update: 2026-11-26
- */
-float compute_z_wnumb(const float radian_frequency, const float depth,
-                      const float gravity) noexcept {
-  if (depth <= 0.0F || radian_frequency <= 0.0F) {
-    return kInvalidValue;
-  }
-  const float omega = (radian_frequency * radian_frequency) / gravity;
-  const float y = omega * depth;
-  float poly = 0.00039F + (y * 0.00011F);
-  poly = 0.00171F + (y * poly);
-  poly = 0.00654F + (y * poly);
-  poly = 0.02174F + (y * poly);
-  poly = 0.06320F + (y * poly);
-  poly = 0.16084F + (y * poly);
-  poly = 0.35550F + (y * poly);
-  poly = 0.66667F + (y * poly);
-  const float xx = y * (y + (1.0F / (1.0F + (y * poly))));
-  const float x = std::sqrt(xx);
-  return x / depth;
-}
-
-// --- compute_z_cmpcg --------------------------------------------------------
-/**
- * @brief Group velocity from radian frequency and depth (Z_CMPCG).
- * @details Linear theory with the wavenumber of Z_WNUMB, and the deep water
- * value for k d > 30. Returns -10 for zero depth or frequency.
- * @param radian_frequency Radian frequency sigma.
- * @param depth Water depth d.
- * @param gravity Acceleration of gravity g.
- * @return The group velocity.
- * @author Main Author(s): Gerbrant Ph. van Vledder (Xnl library), Aldgisl
- * (AI Persona) and Hendrik L. Tolman (C++ translation)
- * @author Contributors: Kiro (Agentic AI/SI)
- * @author Code Heritage: Converted from Xnl Z_CMPCG by G. Ph. van Vledder.
- * @date Initial: 2026-11-25
- * @date Last update: 2026-11-26
- */
-float compute_z_cmpcg(const float radian_frequency, const float depth,
-                      const float gravity) noexcept {
-  const float k = compute_z_wnumb(radian_frequency, depth, gravity);
-  if (depth <= 0.0F || radian_frequency <= 0.0F) {
-    return kInvalidValue;
-  }
-  if (depth * k > kDeepWaterLimit) {
-    return gravity / (2.0F * radian_frequency);
-  }
-  return (radian_frequency / k) *
-         (0.5F + ((depth * k) / std::sinh((2.0F * depth) * k)));
 }
 
 // --- TransformedLocus -------------------------------------------------------

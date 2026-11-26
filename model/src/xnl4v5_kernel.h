@@ -17,12 +17,12 @@
  * cross-referencing with mod_xnl4v5.f90.
  *
  * This is the first stage of the translation of the Xnl library. The kernel
- * covers the computations of Q_XNL4V4, Q_T13V4 and Q_GETLOCUS (and the
- * service routines Z_CMPCG and Z_WNUMB): the nonlinear transfer and its
- * diagonal term for a given spectrum, using an interaction grid that is
- * computed (or read from a BQF file) by the Fortran code. Grid generation,
- * grid selection, depth scaling, file I/O, logging and error handling remain
- * in Fortran for now.
+ * covers the computations of Q_XNL4V4, Q_T13V4 and Q_GETLOCUS (and uses the
+ * service routine Z_CMPCG, which is in xnl4v5_physics.cpp since the second
+ * stage): the nonlinear transfer and its diagonal term for a given spectrum,
+ * using an interaction grid that is computed (or read from a BQF file) by the
+ * Fortran code. Grid generation, grid selection, depth scaling, file I/O,
+ * logging and error handling remain in Fortran for now.
  *
  * Method: the rate of change of action density N_1 at wavenumber k_1 is
  * written as dN_1/dt = 2 int T(k_1, k_3) dk_3, where the function T13 is a

@@ -217,7 +217,6 @@ integer klocus   !< number of points on locus as stored in quadruplet database
                  !< based on nlocus0, iq_gauleg and iq_lump (without compacting)
                  !< used in Q_ALLOCATE to define size of data arrays
 integer nlocus   !< number of points on locus, equal to klocus
-integer nlocusx  !< number of points on locus for use in computation (nlocusx <= nlocus)
 !
 real kqmin       !< lowest wave number
 real kqmax       !< highest wave number
@@ -315,30 +314,6 @@ real, allocatable :: wa_k4(:)   !< w.r.t. discrete a-grid
 real, allocatable :: wt_k2(:)   !< weight factor in tail,
 real, allocatable :: wt_k4(:)   !< wt==1 for wave numbers inside k-grid
 !
-integer, allocatable :: t_ik2(:)   !< transformed weight for k2-magnitude
-integer, allocatable :: t_ia2(:)   !< transformed direction for k2
-integer, allocatable :: t_ik4(:)   !< transformed tail factor for k2
-integer, allocatable :: t_ia4(:)   !< transformed weight for k4
-real, allocatable :: t_w1k2(:)  !< transformed weight 1 for k2
-real, allocatable :: t_w2k2(:)  !< transformed weight 2 for k2
-real, allocatable :: t_w3k2(:)  !< transformed weight 3 for k2
-real, allocatable :: t_w4k2(:)  !< transformed weight 4 for k2
-real, allocatable :: t_w1k4(:)  !< transformed weight 1 for k4
-real, allocatable :: t_w2k4(:)  !< transformed weight 2 for k4
-real, allocatable :: t_w3k4(:)  !< transformed weight 3 for k4
-real, allocatable :: t_w4k4(:)  !< transformed weight 4 for k4
-real, allocatable :: t_zz(:)    !< product term
-!
-!  corresponding declarations
-!
-integer, allocatable :: r_ik2(:) !< corresponding declarations r_ik2
-integer, allocatable :: r_ia2(:) !< corresponding declarations r_ia2
-integer, allocatable :: r_ik4(:) !< corresponding declarations r_ik4
-integer, allocatable :: r_ia4(:) !< corresponding declarations r_ia4
-real, allocatable :: r_w1k2(:),r_w2k2(:),r_w3k2(:),r_w4k2(:) !< corresponding declarations
-real, allocatable :: r_w1k4(:),r_w2k4(:),r_w3k4(:),r_w4k4(:) !< corresponding declarations
-real, allocatable :: r_zz(:),r_jac(:),r_cple(:),r_sym(:),r_ws(:) !< corresponding declarations
-!
 real, allocatable :: dt13(:)    !< increment along locus
 !
 real, allocatable :: q_xk(:)    !< extended wave number array starting at index 0
@@ -426,6 +401,56 @@ integer iq_err    !<  counts the number of errors
 !<                    routine Q_ERROR handles the reporting on the error
 !
 integer iq_warn   !<  counts the number of warnings
+!
+!  C++ translations of the physics functions (xnl4v5_physics.cpp, declared in
+!  xnl4v5_physics.h), called from the Fortran functions with the same names
+!
+interface
+  real(c_float) function x_disper_cpp(k, d, iq_disp, q_grav)               &
+&   bind(c, name="x_disper_cpp")
+    use, intrinsic :: iso_c_binding
+    real(c_float), value, intent(in) :: k, d, q_grav
+    integer(c_int), value, intent(in) :: iq_disp
+  end function x_disper_cpp
+  real(c_float) function x_cosk_cpp(k, q, pmag, iq_disp, q_depth, q_grav)  &
+&   bind(c, name="x_cosk_cpp")
+    use, intrinsic :: iso_c_binding
+    real(c_float), value, intent(in) :: k, q, pmag, q_depth, q_grav
+    integer(c_int), value, intent(in) :: iq_disp
+  end function x_cosk_cpp
+  real(c_float) function x_flocus_cpp(kxx, kyy, q, px, py, sqrtg, iq_disp, &
+&   q_depth, q_grav) bind(c, name="x_flocus_cpp")
+    use, intrinsic :: iso_c_binding
+    real(c_float), value, intent(in) :: kxx, kyy, q, px, py, sqrtg, q_depth, q_grav
+    integer(c_int), value, intent(in) :: iq_disp
+  end function x_flocus_cpp
+  real(c_float) function x_locus1_cpp(k2, q, pmag, sqrtg, iq_disp, q_depth, &
+&   q_grav) bind(c, name="x_locus1_cpp")
+    use, intrinsic :: iso_c_binding
+    real(c_float), value, intent(in) :: k2, q, pmag, sqrtg, q_depth, q_grav
+    integer(c_int), value, intent(in) :: iq_disp
+  end function x_locus1_cpp
+  real(c_float) function x_locus2_cpp(lambda, q, px, py, kmidx, kmidy,     &
+&   sqrtg, iq_disp, q_depth, q_grav) bind(c, name="x_locus2_cpp")
+    use, intrinsic :: iso_c_binding
+    real(c_float), value, intent(in) :: lambda, q, px, py, kmidx, kmidy,   &
+&     sqrtg, q_depth, q_grav
+    integer(c_int), value, intent(in) :: iq_disp
+  end function x_locus2_cpp
+  real(c_float) function x_jacobian_cpp(x2, y2, x4, y4, q_depth, q_grav)   &
+&   bind(c, name="x_jacobian_cpp")
+    use, intrinsic :: iso_c_binding
+    real(c_float), value, intent(in) :: x2, y2, x4, y4, q_depth, q_grav
+  end function x_jacobian_cpp
+  real(c_float) function x_cple_cpp(k1x, k1y, k2x, k2y, k3x, k3y, k4x, k4y,&
+&   iq_cple, depth, grav) bind(c, name="x_cple_cpp")
+    use, intrinsic :: iso_c_binding
+    real(c_float), value, intent(in) :: k1x, k1y, k2x, k2y, k3x, k3y, k4x, &
+&     k4y, depth, grav
+    integer(c_int), value, intent(in) :: iq_cple
+  end function x_cple_cpp
+end interface
+!
 !
 !  indices for test output of actual integration
 !  these values are set and optionally modified in Q_SETCONFIG
@@ -1153,34 +1178,6 @@ if (allocated(wt_k4)) deallocate(wt_k4)   ;     allocate (wt_k4(mlocus))
 !  allocate data arrays for transformation of locus information
 !  and integration along locus
 !-----------------------------------------------------------------------------
-if (allocated(r_ik2))  deallocate (r_ik2)  ;   allocate (r_ik2(klocus))
-if (allocated(r_ia2))  deallocate (r_ia2)  ;   allocate (r_ia2(klocus))
-if (allocated(r_ik4))  deallocate (r_ik4)  ;   allocate (r_ik4(klocus))
-if (allocated(r_ia4))  deallocate (r_ia4)  ;   allocate (r_ia4(klocus))
-if (allocated(r_w1k2)) deallocate (r_w1k2) ;   allocate (r_w1k2(klocus))
-if (allocated(r_w2k2)) deallocate (r_w2k2) ;   allocate (r_w2k2(klocus))
-if (allocated(r_w3k2)) deallocate (r_w3k2) ;   allocate (r_w3k2(klocus))
-if (allocated(r_w4k2)) deallocate (r_w4k2) ;   allocate (r_w4k2(klocus))
-if (allocated(r_w1k4)) deallocate (r_w1k4) ;   allocate (r_w1k4(klocus))
-if (allocated(r_w2k4)) deallocate (r_w2k4) ;   allocate (r_w2k4(klocus))
-if (allocated(r_w3k4)) deallocate (r_w3k4) ;   allocate (r_w3k4(klocus))
-if (allocated(r_w4k4)) deallocate (r_w4k4) ;   allocate (r_w4k4(klocus))
-if (allocated(r_zz))   deallocate (r_zz)   ;   allocate (r_zz(klocus))
-!-------------------------------------------------------------------------------
-if (allocated(t_ik2))  deallocate (t_ik2)  ;   allocate (t_ik2(klocus))
-if (allocated(t_ia2))  deallocate (t_ia2)  ;   allocate (t_ia2(klocus))
-if (allocated(t_ik4))  deallocate (t_ik4)  ;   allocate (t_ik4(klocus))
-if (allocated(t_ia4))  deallocate (t_ia4)  ;   allocate (t_ia4(klocus))
-if (allocated(t_w1k2)) deallocate (t_w1k2) ;   allocate (t_w1k2(klocus))
-if (allocated(t_w2k2)) deallocate (t_w2k2) ;   allocate (t_w2k2(klocus))
-if (allocated(t_w3k2)) deallocate (t_w3k2) ;   allocate (t_w3k2(klocus))
-if (allocated(t_w4k2)) deallocate (t_w4k2) ;   allocate (t_w4k2(klocus))
-if (allocated(t_w1k4)) deallocate (t_w1k4) ;   allocate (t_w1k4(klocus))
-if (allocated(t_w2k4)) deallocate (t_w2k4) ;   allocate (t_w2k4(klocus))
-if (allocated(t_w3k4)) deallocate (t_w3k4) ;   allocate (t_w3k4(klocus))
-if (allocated(t_w4k4)) deallocate (t_w4k4) ;   allocate (t_w4k4(klocus))
-if (allocated(t_zz))   deallocate (t_zz)   ;   allocate (t_zz(klocus))
-!-------------------------------------------------------------------------------
 if (allocated(dt13)) deallocate (dt13) ; allocate(dt13(klocus))
 !
 !-------------------  spectral grid data ------------------------
@@ -6010,6 +6007,7 @@ implicit none
 !     Date        Description
 !
 !     13/08/2002  Initial version
+!     26/11/2026 Computation moved to C++ (X_COSK_CPP, xnl4v5_physics.cpp)
 !
 !  1. Purpose:
 !
@@ -6046,30 +6044,10 @@ real, intent(in) :: k  ! wave number along symmetry axis of locus
 !
 ! 10. Source code
 !------------------------------------------------------------------------------
-!     Local variables
 !
-real qq    ! constant in direct polar method qq=q/sqrt(g)
-real wk    ! intemediate radian frequency
-real kz    ! intermediate wave number
-!------------------------------------------------------------------------------
-select case(iq_disp)
+x_cosk = x_cosk_cpp(k, q, pmag, iq_disp, q_depth, q_grav)
 !
-case(1)   ! deep water
-!
-  qq = q/sqrt(q_grav)
-  x_cosk = ((qq+sqrt(k))**4 - k**2 - pmag**2)/(2.*k*pmag)
-!
-case(2)   !  finite depth
-!
-  wk = q + x_disper(k,q_depth)
-  kz = z_wnumb(wk,q_depth,q_grav)
-  x_cosk = (kz**2-k**2 - pmag**2)/(2.*k*pmag)
-!
-end select
-!
-x_cosk = max(-1.,x_cosk)
-x_cosk = min( 1.,x_cosk)
-!
+return
 end function x_cosk
 !------------------------------------------------------------------------------
 !>
@@ -6112,6 +6090,7 @@ implicit none
 !     09/08/2002  Upgrade to release 4.0
 !     10/09/2002  g included in interface
 !     04/07/2025  Remove labelled statements
+!     26/11/2026 Computation moved to C++ (X_CPLE_CPP, xnl4v5_physics.cpp)
 !
 !  1. Purpose:
 !
@@ -6158,32 +6137,9 @@ real, intent(in) ::       grav    !  Gravitational acceleration
 !
 ! 10. Source code:
 !-------------------------------------------------------------------------------
-!     Local variables
-!                        ! real functions to compute coupling coefficient
-!!real xc_webb             ! Webb, deep water
-!!real xc_hh               ! Herterich and Hasselmann, finite depth
-!------------------------------------------------------------------------------
-if (iq_cple < 1 .or. iq_cple > 4) then
-  x_cple = 0.
-  return
-end if
 !
-select case(iq_cple)
-!
-!  1) Deep water coupling coefficient of Webb
-!
-case(1)
-  x_cple = xc_webb(k1x,k1y,k2x,k2y,k3x,k3y,k4x,k4y,grav)
-!
-!  2) finite depth coupling coefficient of Herterich and Hasselmann
-!     as implemented in the Resio-Tracy program SB5
-!
-case(2)
-  x_cple = xc_hh(k4x,k4y,k3x,k3y,k2x,k2y,k1x,k1y,depth)
-!
-! x_cple = xc_hh2(k1x,k1y,k2x,k2y,k3x,k3y,depth,grav)
-!
-end select
+x_cple = x_cple_cpp(k1x, k1y, k2x, k2y, k3x, k3y, k4x, k4y, &
+&   iq_cple, depth, grav)
 !
 return
 end function
@@ -6222,6 +6178,7 @@ implicit none
 !     09/10/1999 Values of w2 and w4 in double precision
 !                to improve accuracy of computation of z
 !     09/08/2002 Upgrade to release 4.0
+!     26/11/2026 Computation moved to C++ (X_FLOCUS_CPP, xnl4v5_physics.cpp)
 !
 !  1. Purpose:
 !
@@ -6260,35 +6217,9 @@ real, intent(in) ::  kyy      !  y-component of wave number
 !
 ! 10. Source code:
 !-------------------------------------------------------------------------------
-!     Local variables
 !
-real z               ! diferrence
-real k2m,k4m         ! wave number magnitudes
-real (kind=8) w2,w4  ! radian frequencies
-!!real x_disper
-!------------------------------------------------------------------------------
-!call q_stack('+x_flocus')
-!
-select case(iq_disp)
-  case (1)
-    w2 = sqrtg * (kxx**2 + kyy**2)**(0.25)
-    w4 = sqrtg * ((kxx+px)**2 + (kyy+py)**2)**(0.25)
-    z = q + w2 - w4
-!
-  case (2)
-    k2m = sqrt(kxx**2+kyy**2)
-    k4m = sqrt((kxx+px)**2 + (kyy+py)**2)
-    w2 = x_disper(k2m,q_depth)
-    w4 = x_disper(k4m,q_depth)
-    z  = q + w2 - w4
-!
-  case default
-    z = -1
-  end select
-!
-x_flocus = z
-!
-!call q_stack('-x_flocus')
+x_flocus = x_flocus_cpp(kxx, kyy, q, px, py, sqrtg, iq_disp, &
+&   q_depth, q_grav)
 !
 return
 end function
@@ -6335,6 +6266,7 @@ implicit none
 !     09/08/2002 Computation of Jacobian replace by |cg2-cg4|
 !                based on old routine X_GRAD2
 !                Upgrade to release 4.0
+!     26/11/2026 Computation moved to C++ (X_JACOBIAN_CPP, xnl4v5_physics.cpp)
 !
 !  1. Purpose:
 !
@@ -6371,39 +6303,8 @@ real, intent(in) ::  y4   !  y-component of wave number k4
 !
 ! 10. Source code:
 !------------------------------------------------------------------------------
-! local variables
 !
-real k2m,k4m    ! wave number magnitudes
-real k2md,k4md  ! k*d values
-real ang2,ang4  ! directions
-real cg2,cg4    ! group velocities
-real sig2,sig4  ! radian frequencies
-!------------------------------------------------------------------------------
-k2m = sqrt(x2**2 + y2**2)
-k4m = sqrt(x4**2 + y4**2)
-!
-ang2 = atan2(x2,y2)
-ang4 = atan2(x4,y4)
-!
-sig2 = sqrt(q_grav*k2m*tanh(k2m*q_depth))
-sig4 = sqrt(q_grav*k4m*tanh(k4m*q_depth))
-!
-k2md = k2m*q_depth
-k4md = k4m*q_depth
-!
-if(k2md > 20) then
-  cg2 = 0.5*q_grav/sig2
-else
-  cg2 = sig2/k2m*(0.5+k2md/sinh(2*k2md))
-end if
-!
-if(k4md > 20) then
-  cg4 = 0.5*q_grav/sig4
-else
-  cg4 = sig4/k4m*(0.5+k4md/sinh(2*k4md))
-end if
-!
-x_jacobian = sqrt(cg2**2+cg4**2-2*cg2*cg4*cos(ang2-ang4))
+x_jacobian = x_jacobian_cpp(x2, y2, x4, y4, q_depth, q_grav)
 !
 return
 end function
@@ -6445,6 +6346,7 @@ implicit none
 !     16/02/1999  Initial version
 !     25/02/1999  Short cut if kd > 10
 !     09/08/2002  Upgrade to release 4.0
+!     26/11/2026 Computation moved to C++ (X_DISPER_CPP, xnl4v5_physics.cpp)
 !
 !  1. Purpose:
 !
@@ -6489,24 +6391,8 @@ real, intent(in)   ::   d   !   water depth in m
 !
 ! 10. Source code
 !------------------------------------------------------------------------------
-!     Local variables
 !
-integer id   ! copy of iq_type
-real kd      ! k*d
-!
-kd = k * d
-id = iq_disp
-!
-if (kd > 20.) id = 1
-!
-select case(id)
-  case (1)                           ! deep water w^2=g k
-    x_disper = sqrt(q_grav*k)
-  case (2)                           ! finite depth w^2 = g k tanh(k d)
-    x_disper = sqrt(q_grav*k*tanh(k*d))
-  case default
-    x_disper = -1.
-end select
+x_disper = x_disper_cpp(k, d, iq_disp, q_grav)
 !
 return
 end function
@@ -6542,6 +6428,7 @@ implicit none
 !
 !     23/11/1999  Initial version
 !      9/08/2002  Upgrade to release 4.0
+!     26/11/2026 Computation moved to C++ (X_LOCUS1_CPP, xnl4v5_physics.cpp)
 !
 !  1. Purpose:
 !
@@ -6578,31 +6465,9 @@ real, intent(in) :: k2   !  Magnitude of wave number k2
 !
 ! 10. Source code
 !------------------------------------------------------------------------------
-!     Local variables
 !
-real k4       ! wave number magnitudes of k4
-real w2,w4    ! radian frequencies of wave numbers k2 and k4
-real z        ! function value
-!
-!!real x_disper
-!
-select case(iq_disp)
-  case (1)
-    w2 = sqrtg * sqrt(k2)
-    w4 = sqrtg * sqrt(abs(-pmag+k2))
-    z  = q + w2 - w4
-!
-  case (2)
-    k4 = abs(-pmag+k2)
-    w2 = x_disper(k2,q_depth)
-    w4 = x_disper(k4,q_depth)
-    z  = q + w2 - w4
-!
-  case default
-    z = -1
-  end select
-!
-x_locus1 = z
+x_locus1 = x_locus1_cpp(k2, q, pmag, sqrtg, iq_disp, q_depth, &
+&   q_grav)
 !
 return
 end function
@@ -6638,6 +6503,7 @@ implicit none
 !
 !     23/11/1999  Initial version
 !     09/08/2002  Upgrade to release 4.0
+!     26/11/2026 Computation moved to C++ (X_LOCUS2_CPP, xnl4v5_physics.cpp)
 !
 !  1. Purpose:
 !
@@ -6674,555 +6540,11 @@ real, intent(in) ::  lambda
 !
 ! 10. Source code:
 !------------------------------------------------------------------------------
-!     local variables
 !
-real kk2x,kk2y,kk2m  ! wave number components and magnitude for k2
-real kk4x,kk4y,kk4m  ! wave number components and magnitude for k4
-real w2,w4           ! radian frequencies of wave numbers k2 and k4
-real z               ! function value
-!!real x_disper
-kk2x = kmidx - lambda*py
-kk2y = kmidy + lambda*px
-kk2m = sqrt(kk2x**2 + kk2y**2)
-!
-kk4x = kk2x + px
-kk4y = kk2y + py
-kk4m = sqrt(kk4x**2 + kk4y**2)
-!
-select case(iq_disp)
-  case (1)
-    w2 = sqrtg * sqrt(kk2m)
-    w4 = sqrtg * sqrt(kk4m)
-    z  = q + w2 - w4
-!
-  case (2)
-!
-    w2 = x_disper(kk2m,q_depth)
-    w4 = x_disper(kk4m,q_depth)
-    z  = q + w2 - w4
-!
-  case default
-    z = -1
-  end select
-!
-x_locus2 = z
+x_locus2 = x_locus2_cpp(lambda, q, px, py, kmidx, kmidy, sqrtg, &
+&   iq_disp, q_depth, q_grav)
 !
 return
 end function
-!------------------------------------------------------------------------------
-!>
-!> @brief  N/A
-!>
-!> @param    w1x0
-!> @param    w1y0
-!> @param    w2x0
-!> @param    w2y0
-!> @param    w3x0
-!> @param    w3y0
-!> @param    z4x
-!> @param    z4y
-!> @param    h
-!> @returns  xc_hh
-!>
-!> @author  N/A  @date N/A
-!>
-
-real function xc_hh(w1x0,w1y0,w2x0,w2y0,w3x0,w3y0,z4x,z4y,h)
-!------------------------------------------------------------------------------
-!
-!  factor EPS included
-!
-implicit none
-!
-real z4x,z4y  ! dummy arguments
-!
-real w1x0,w1y0,w2x0,w2y0,w3x0,w3y0,h,dsq
-real om1,om2,om3,om4,scpl1,scpl2,scpl3,stot
-real t1,t2,t3,t4,t5,tot1,tot2,tot3,tot4,tot5
-real som1,som2,som3
-real s1,s2,s3,z1,z2,z3,z4,z5
-real p1,p2,p3,p4,di,tnz1,tnz2,tnz3,tnz23
-real csz1,csz2,csz3,csz23
-real e,g,gsq,omsq23,pi4
-real dot123,dot23
-!!real cosz,tanz
-!
-real eps
-!
-
-!     calculates coupling coefficient in shallow water given k1,k2,k3
-      real k1,k2,k3,k1x,k2x,k3x,k1y,k2y,k3y,k23x,k23y,k23,k1x0,k1y0,   &
-     &     k2x0,k2y0,k3x0,k3y0,k1zx,k1zy
-      data pi4/0.785398163/
-!
-eps = 1.e-20
-g = 9.81
-!
-z4x = z4x
-z4y = z4y
-!
-!      print *,'entering cplesh depth = ',h
-      k1x0=w1x0
-      k1y0=w1y0
-      k2x0=w2x0
-      k2y0=w2y0
-      k3x0=w3x0
-      k3y0=w3y0
-
-      tot1=0.
-      tot2=0.
-      tot3=0.
-      tot4=0.
-      tot5=0.
-      z1=0.
-      z2=0.
-      z3=0.
-      z4=0.
-      z5=0.
-      g=9.81
-      gsq=g*g
-
-      s1=1.
-      s2=1.
-      s3=-1.
-
-
-      k1x=s1*k1x0
-      k1y=s1*k1y0
-      k2x=s2*k2x0
-      k2y=s2*k2y0
-      k3x=s3*k3x0
-      k3y=s3*k3y0
-
-      k1=sqrt(k1x**2+k1y**2)
-      k2=sqrt(k2x**2+k2y**2)
-      k3=sqrt(k3x**2+k3y**2)
-
-       tnz1=tanz(k1*h)
-       tnz2=tanz(k2*h)
-       tnz3=tanz(k3*h)
-       csz1=cosz(k1*h)
-       csz2=cosz(k2*h)
-       csz3=cosz(k3*h)
-      om1=sqrt(g*k1*tnz1)
-      om2=sqrt(g*k2*tnz2)
-      om3=sqrt(g*k3*tnz3)
-
-      som1=s1*om1
-      som2=s2*om2
-      som3=s3*om3
-      dot23=k2x*k3x+k2y*k3y
-
-      k23x=k2x+k3x
-      k23y=k2y+k3y
-      k23=sqrt(k23x**2+k23y**2)
-      tnz23=tanz(k23*h)
-      csz23=cosz(k23*h)
-
-      omsq23=g*k23*tnz23
-      dot123=k1x*k23x+k1y*k23y
-
-!     note the "i**2" factor is included in this term
-      DI=-(som2+som3)*(k2*k3*tnz2*tnz3-dot23)  &
-     & +0.5*(som2*k3**2/(csz3)**2+som3*k2**2/(csz2)**2)
-
-      E=0.5/g *(dot23-som2*som3/gsq*(om2**2+om3**2+som2*som3))
-
-      p1=2.*(som1+som2+som3)*(om1**2.*omsq23/gsq-dot123)
-
-      p2=-som1*(k23)**2/(csz23)**2
-
-      p3=-(som2+som3)*k1**2/(csz1)**2
-
-      z1=z1+di
-      z2=z2+omsq23-(som2+som3)**2
-      z3=z3+p1
-      z4=z4+p2
-      z5=z5+p3
-      T1=DI/(omsq23-(som2+som3)**2 + eps ) * (p1+p2+p3)
-
-      T2=-DI*som1/gsq *(om1**2+omsq23)
-
-      p4=g*k1**2/(csz1)**2
-
-      T3=E*(som1**3*(som2+som3)/g - g*dot123 - p4)
-
-      T4=0.5*som1/gsq*dot23*((som1+som2+som3)*(om2**2+om3**2)  &
-     &                           +som2*som3*(som2+som3))
-
-      T5=-0.5*som1*om2**2*k3**2/gsq*(som1+som2+2.*som3)  &
-     &   -0.5*som1*om3**2*k2**2/gsq*(som1+2.*som2+som3)
-
-      scpl1=T1+T2+T3+T4+T5
-      tot1=tot1+t1
-      tot2=tot2+t2
-      tot3=tot3+t3
-      tot4=tot4+t4
-      tot5=tot5+t5
-
-      s1=1.
-      s2=-1.
-      s3=1.
-      k1zx=k1x0
-      k1zy=k1y0
-      k1x0=k2x0
-      k1y0=k2y0
-      k2x0=k3x0
-      k2y0=k3y0
-      k3x0=k1zx
-      k3y0=k1zy
-
-
-      k1x=s1*k1x0
-      k1y=s1*k1y0
-      k2x=s2*k2x0
-      k2y=s2*k2y0
-      k3x=s3*k3x0
-      k3y=s3*k3y0
-
-      k1=sqrt(k1x**2+k1y**2)
-      k2=sqrt(k2x**2+k2y**2)
-      k3=sqrt(k3x**2+k3y**2)
-      tnz1=tanz(k1*h)
-      tnz2=tanz(k2*h)
-      tnz3=tanz(k3*h)
-       csz1=cosz(k1*h)
-       csz2=cosz(k2*h)
-       csz3=cosz(k3*h)
-      om1=sqrt(g*k1*tnz1)
-      om2=sqrt(g*k2*tnz2)
-      om3=sqrt(g*k3*tnz3)
-      som1=s1*om1
-      som2=s2*om2
-      som3=s3*om3
-      dot23=k2x*k3x+k2y*k3y
-      k23x=k2x+k3x
-      k23y=k2y+k3y
-      k23=sqrt(k23x**2+k23y**2)
-      tnz23=tanz(k23*h)
-      csz23=cosz(k23*h)
-      omsq23=g*k23*tnz23
-      dot123=k1x*k23x+k1y*k23y
-
-!     note the "i**2" factor is included in this term
-      DI=-(som2+som3)*(k2*k3*tnz2*tnz3-dot23)  &
-     & +0.5*(som2*k3**2/(csz3)**2+som3*k2**2/(csz2)**2)
-
-      E=0.5/g *(dot23-som2*som3/gsq *(om2**2+om3**2+som2*som3))
-
-      p1=2.*(som1+som2+som3)*(om1**2.*omsq23/gsq-dot123)
-
-      p2=-som1*(k23)**2/(csz23)**2
-
-      p3=-(som2+som3)*k1**2/(csz1)**2
-      z1=z1+di
-      z2=z2+omsq23-(som2+som3)**2
-      z3=z3+p1
-      z4=z4+p2
-      z5=z5+p3
-
-      T1=DI/(omsq23-(som2+som3)**2) * (p1+p2+p3)
-
-      T2=-DI*som1/gsq *(om1**2+omsq23)
-
-      p4=g*k1**2/(csz1)**2
-
-      T3=E*(som1**3*(som2+som3)/g - g*dot123 - p4)
-
-      T4=0.5*som1/gsq*dot23*((som1+som2+som3)*(om2**2+om3**2) &
-     &                           +som2*som3*(som2+som3))
-
-      T5=-0.5*som1*om2**2*k3**2/gsq*(som1+som2+2.*som3)  &
-     &   -0.5*som1*om3**2*k2**2/gsq*(som1+2.*som2+som3)
-
-      scpl2=T1+T2+T3+T4+T5
-      tot1=tot1+t1
-      tot2=tot2+t2
-      tot3=tot3+t3
-      tot4=tot4+t4
-      tot5=tot5+t5
-
-      s1=-1.
-      s2=1.
-      s3=1.
-      k1zx=k1x0
-      k1zy=k1y0
-      k1x0=k2x0
-      k1y0=k2y0
-      k2x0=k3x0
-      k2y0=k3y0
-      k3x0=k1zx
-      k3y0=k1zy
-
-
-      k1x=s1*k1x0
-      k1y=s1*k1y0
-      k2x=s2*k2x0
-      k2y=s2*k2y0
-      k3x=s3*k3x0
-      k3y=s3*k3y0
-
-      k1=sqrt(k1x**2+k1y**2)
-      k2=sqrt(k2x**2+k2y**2)
-      k3=sqrt(k3x**2+k3y**2)
-      tnz1=tanz(k1*h)
-      tnz2=tanz(k2*h)
-      tnz3=tanz(k3*h)
-      csz1=cosz(k1*h)
-      csz2=cosz(k2*h)
-      csz3=cosz(k3*h)
-      om1=sqrt(g*k1*tnz1)
-      om2=sqrt(g*k2*tnz2)
-      om3=sqrt(g*k3*tnz3)
-      som1=s1*om1
-      som2=s2*om2
-      som3=s3*om3
-      dot23=k2x*k3x+k2y*k3y
-      k23x=k2x+k3x
-      k23y=k2y+k3y
-      k23=sqrt(k23x**2+k23y**2)
-      tnz23=tanz(k23*h)
-       csz23=cosz(k23*h)
-      omsq23=g*k23*tnz23
-      dot123=k1x*k23x+k1y*k23y
-
-!     note the "i**2" factor is included in this term
-      DI=-(som2+som3)*(k2*k3*tnz2*tnz3-dot23) &
-     & +0.5*(som2*k3**2/(csz3)**2+som3*k2**2/(csz2)**2)
-
-      E=0.5/g *(dot23-som2*som3/gsq *(om2**2+om3**2+som2*som3))
-
-      p1=2.*(som1+som2+som3)*(om1**2.*omsq23/gsq-dot123)
-
-      p2=-som1*(k23)**2/(csz23)**2
-
-      p3=-(som2+som3)*k1**2/(csz1)**2
-      z1=z1+di
-      z2=z2+omsq23-(som2+som3)**2
-      z3=z3+p1
-      z4=z4+p2
-      z5=z5+p3
-
-      T1=DI/(omsq23-(som2+som3)**2) * (p1+p2+p3)
-
-      T2=-DI*som1/gsq*(om1**2+omsq23)
-
-      p4=g*k1**2/(cosz(k1*h))**2
-
-      T3=E*(som1**3*(som2+som3)/g - g*dot123 - p4)
-
-      T4=0.5*som1/gsq*dot23*((som1+som2+som3)*(om2**2+om3**2) &
-     &                           +som2*som3*(som2+som3))
-
-      T5=-0.5*som1*om2**2*k3**2/gsq*(som1+som2+2.*som3) &
-     &   -0.5*som1*om3**2*k2**2/gsq*(som1+2.*som2+som3)
-
-      scpl3=T1+T2+T3+T4+T5
-      tot1=tot1+t1
-      tot2=tot2+t2
-      tot3=tot3+t3
-      tot4=tot4+t4
-      tot5=tot5+t5
-
-      stot=(scpl1+scpl2+scpl3)
-      om4=om2+om3-om1
-      dsq=stot*stot*pi4*gsq/(om1*om2*om3*om4+eps) ! eps by GVV
-      xc_hh = dsq
-!
-!  possible bug fixed
-!
-      xc_hh = xc_hh*gsq
-!
-      RETURN
-      end  function
-
-!>
-!> @brief N/A.
-!>
-!> @param   x
-!> @returns tanz
-!>
-!> @author  N/A  @date N/A
-!>
-      
-      real function tanz(x)
-      real x
-!      print *,'inside tanz '
-      if (x.gt.20.) x=25.
-      tanz=tanh(x)
-!      print *,'after def of tanz'
-      return
-      end  function
-
-!>
-!> @brief N/A.
-!>
-!> @param   x
-!> @returns cosz
-!>
-!> @author  N/A  @date N/A
-!>
-      
-      real function cosz(x)
-      real x
-      if (x.gt.20.) x=25.
-      cosz=cosh(x)
-      return
-      end  function
-
-
-!------------------------------------------------------------------------------
-!>
-!> @brief Compute deep water coupling coefficient for non-linear quadruplet
-!>  interactions.
-!>
-!> @details Webb (1978) and modified and corrected by Dungey and Hui (1979).
-!>
-!> @param    k1x      X-component of wave number k1.
-!> @param    k1y      Y-component of wave number k1.
-!> @param    k2x      X-component of wave number k2.
-!> @param    k2y      Y-component of wave number k2.
-!> @param    k3x      X-component of wave number k3.
-!> @param    k3y      Y-component of wave number k3.
-!> @param    k4x      X-component of wave number k4.
-!> @param    k4y      Y-component of wave number k4.
-!> @param    grav     gravitational acceleration m/s^2.
-!> @returns  xc_webb
-!>
-!> @author  Gerbrant van Vledder  @date 10-Sep-2002
-!>
-      
-real function xc_webb(k1x,k1y,k2x,k2y,k3x,k3y,k4x,k4y,grav)
-!------------------------------------------------------------------------------
-!
-!   +-------+    ALKYON Hydraulic Consultancy & Research
-!   |       |    Gerbrant van Vledder
-!   |   +---+
-!   |   | +---+  Last update: 10  Sep. 2002
-!   +---+ |   |  Release: 5.0
-!         +---+
-!
-implicit none
-!
-!  0. Update history
-!
-!     25/02/1999 Initial version
-!     10/09/2002 Upgrade of documention and interface
-!
-!  1. Purpose:
-!
-!     Compute deep water coupling coefficient for
-!     non-linear quadruplet interactions
-!
-!
-!  2. Method
-!
-!     Webb (1978) and modified and corrected by Dungey and Hui (1979)
-!
-!  3. Parameter list:
-!
-! Type    I/O        Name    Description
-!--------------------------------------------------------------------
-real, intent(in) ::  k1x   !  x-component of wave number k1
-real, intent(in) ::  k1y   !  y-component of wave number k1
-real, intent(in) ::  k2x   !  x-component of wave number k2
-real, intent(in) ::  k2y   !  y-component of wave number k2
-real, intent(in) ::  k3x   !  x-component of wave number k3
-real, intent(in) ::  k3y   !  y-component of wave number k3
-real, intent(in) ::  k4x   !  x-component of wave number k4
-real, intent(in) ::  k4y   !  y-component of wave number k4
-real, intent(in) ::  grav  !  gravitational acceleration m/s^2
-!
-!  4. Error messages
-!
-!  5. Called by:
-!
-!     X_CPLE
-!
-!  6. Subroutines used:
-!
-!  7. Remarks
-!
-!  8. Structure
-!
-!  9. Switches
-!
-! 10. Source code:
-!------------------------------------------------------------------------------
-! local variables
-!
-!
-double precision wsqp12         ! derived variable
-double precision wsqm13         ! derived variable
-double precision wsq13          ! derived variable
-double precision wsqm14         ! derived variable
-double precision wsq14          ! derived variable
-double precision wsq12          ! derived variable
-real z,z12,z13,z14              ! derived variables
-real dwebb                      ! final coefficient
-real p1,p2,p3,p4,p5,p6,p7,p8,p9 ! partial summations
-real w1,w2,w3,w4                ! radian frequencies
-real k1,k2,k3,k4                ! wave number magnitudes
-real dot12                      ! k1*k2
-real dot13                      ! k1*k3
-real dot14                      ! k1*k4
-real dot23                      ! k2*k3
-real dot24                      ! k2*k4
-real dot34                      ! k3*k4
-real pi                         ! pi
-real pi4                        ! pi/4
-real eps                        ! internal accuracy
-!---------------------------------------------------------------------
-! initialisations
-!---------------------------------------------------------------------
-pi  = 4.*atan(1.)
-pi4 = 0.25*pi
-!
-eps = 1.0e-30
-!
-k1 = sqrt(k1x*k1x + k1y*k1y)
-k2 = sqrt(k2x*k2x + k2y*k2y)
-k3 = sqrt(k3x*k3x + k3y*k3y)
-k4 = sqrt(k4x*k4x + k4y*k4y)
-!
-w1 = sqrt(k1)
-w2 = sqrt(k2)
-w3 = sqrt(k3)
-w4 = sqrt(k4)
-!
-dot12 = k1x*k2x + k1y*k2y
-dot13 = k1x*k3x + k1y*k3y
-dot14 = k1x*k4x + k1y*k4y
-dot23 = k2x*k3x + k2y*k3y
-dot24 = k2x*k4x + k2y*k4y
-dot34 = k3x*k4x + k3y*k4y
-!
-wsqp12= sqrt((k1x+k2x)*(k1x+k2x)+(k1y+k2y)*(k1y+k2y))
-wsq12 = (w1+w2)*(w1+w2)
-wsqm13= sqrt((k1x-k3x)*(k1x-k3x)+(k1y-k3y)*(k1y-k3y))
-wsq13 = (w1-w3)*(w1-w3)
-wsqm14= sqrt((k1x-k4x)*(k1x-k4x)+(k1y-k4y)*(k1y-k4y))
-wsq14 = (w1-w4)*(w1-w4)
-z12   = wsqp12-wsq12
-z13   = wsqm13-wsq13
-z14   = wsqm14-wsq14
-z     = 2.*wsq12*(k1*k2-dot12)*(k3*k4-dot34)
-p1    = z/(z12+eps)
-z     = 2.*wsq13*(k1*k3+dot13)*(k2*k4+dot24)
-p2    = z/(z13+eps)
-z     = 2.*wsq14*(k1*k4+dot14)*(k2*k3+dot23)
-p3    = z/(z14+eps)
-p4    =  0.5 *(dot12*dot34 + dot13*dot24 + dot14*dot23)
-p5    =  0.25*(dot13+dot24) * wsq13 * wsq13
-p6    = -0.25*(dot12+dot34) * wsq12 * wsq12
-p7    =  0.25*(dot14+dot23) * wsq14 * wsq14
-p8    =  2.5*k1*k2*k3*k4
-p9    = wsq12*wsq13*wsq14* (k1 + k2 + k3 + k4)
-!
-dwebb  = p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9
-xc_webb = grav**2*pi4*dwebb*dwebb/(w1*w2*w3*w4+eps)
-!
-return
-end  function
 !
 end module

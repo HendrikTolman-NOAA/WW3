@@ -28,7 +28,7 @@ set_target_properties(ww3_lib PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED O
 
 # Xnl library of G. Ph. van Vledder (WRT exact nonlinear interactions, NL2),
 # translated to C++, kept as a separate library
-add_library(xnl4v5_lib STATIC xnl4v5_kernel.cpp)
+add_library(xnl4v5_lib STATIC xnl4v5_kernel.cpp xnl4v5_physics.cpp)
 set_target_properties(xnl4v5_lib PROPERTIES OUTPUT_NAME "xnl4v5")
 set_target_properties(xnl4v5_lib PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED ON)
 target_link_libraries(ww3_lib PUBLIC xnl4v5_lib)
